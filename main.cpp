@@ -26,51 +26,53 @@ torch::jit::script::Module get_module(const char *file_path) {
   return module;
 }
 
+cv::Mat sixteen_bits2eight_bits(cv::Mat &image) {
+	double max_value = 30100.0;
+	double min_value;
+
+	/* 
+	// more precise but more expensive to compute
+	image.convertTo(image, CV_8UC1, 255.0 / (max_value - min_value), - 255.0 * min_value / (max_value - min_value));
+	cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
+	imag.convertTo(image, CV_32FC3, 1.0 / 255.0, 0);
+	*/
+
+    cv::minMaxIdx(image, &min_value);
+ 	image.convertTo(image, CV_32FC1, 1.0 / (max_value - min_value), - min_value / (max_value - min_value));
+	cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
+
+	return image;
+}
+
+	
 int main(int argc, char **argv) {
   
-  if (argc != 2) {
-		std::cerr << "Set an usage mode (0: offline, 1: online)";
-		return -1;
-	}
-  int input_mode = std::stoi(argv[1]);
-    
-  // read input
-  cv::Mat img_raw;
-  cv::VideoCapture cap;
-
-  if (input_mode) {
-      cv::namedWindow("Thermal Camera");
-      cap = cv::VideoCapture(0);  
-  }
-  else {
-  	  std::string filename{"/home/ajvalenc/Datasets/spectronix/thermal/BinClass_Test/Pos/T_IM_%d.png"};
-	  cap = cv::VideoCapture(filename);
-  }
-
-  if (!cap.isOpened()){
-	  std::cerr << "failed to open image sequence";
-  }
-
-
   // load models
   torch::jit::script::Module model_bcls =
-      get_module("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/thermal/Cpp_Codes/weights/traced_bcls-cpu.pt");
+      get_module("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_bcls-cpu.pt");
   torch::jit::script::Module model_bdet =
-      get_module("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/thermal/Cpp_Codes/weights/traced_bdet-cpu.pt");
+      get_module("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_bdet-cpu.pt");
   torch::jit::script::Module model_fdet =
-      get_module("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/thermal/Cpp_Codes/weights/traced_fdet-cpu.pt");
+      get_module("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_fdet-cpu.pt");
 
-  while (true){
+  // read input
+  std::string directory{"/home/ajvalenc/Datasets/spectronix/thermal/blood/16bit/s01_thermal_cloth_01_MicroCalibir_M0000334/"};
+  std::vector<cv::String> filenames;
+  cv::glob(directory, filenames, false);
 
+
+  int i = 0;
+  while (i < filenames.size()) {
+
+	  // read image (16-bit)
+	  cv::Mat img = cv::imread(filenames[i], cv::IMREAD_ANYDEPTH);
+	  cv::Mat img_raw = img.clone();
+		
 	  // scale image
-	  cap >> img_raw;
-	  cv::Mat img = img_raw;
-	  img.convertTo(img, CV_32F, 1.0 / 255.0, 0);
+	  img = sixteen_bits2eight_bits(img);
 
 	  // convert image to torch compatible input
-	  auto tensor_img =
-		  torch::from_blob(img.data, {img.rows, img.cols, img.channels()})
-			  .to(device);
+	  auto tensor_img = torch::from_blob(img.data, {img.rows, img.cols, img.channels()}).to(device);
 	  tensor_img = tensor_img.permute({2, 0, 1});
 	  tensor_img.unsqueeze_(0);
 
@@ -126,6 +128,8 @@ int main(int argc, char **argv) {
 	  // display results
 	  cv::imshow("Thermal Camera", img_raw);
 	  if ((char)cv::waitKey(5) >0) break;
+
+	  i += 1;
   }
 
   return 0;
