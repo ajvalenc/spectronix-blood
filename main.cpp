@@ -8,55 +8,21 @@
 #include <torchvision/ops/nms.h>
 #include <torchvision/vision.h>
 
+#include "utils.hpp"
+
 torch::Device device(torch::kCPU);
 
-torch::jit::script::Module get_module(const char *file_path) {
-  torch::jit::script::Module module;
-
-  std::ifstream input(file_path, std::ios::binary);
-
-  if (input)
-    // Deserialize the ScriptModule from a file using torch::jit::load().
-    module = torch::jit::load(input, device = device);
-  else
-    std::cerr << "ifstream not provided ";
-
-  std::cout << "Module successfully loaded \n";
-
-  return module;
-}
-
-cv::Mat sixteen_bits2eight_bits(cv::Mat &image) {
-	double max_value = 30100.0;
-	double min_value;
-
-	/* 
-	// more precise but more expensive to compute
-	image.convertTo(image, CV_8UC1, 255.0 / (max_value - min_value), - 255.0 * min_value / (max_value - min_value));
-	cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
-	imag.convertTo(image, CV_32FC3, 1.0 / 255.0, 0);
-	*/
-
-    cv::minMaxIdx(image, &min_value);
- 	image.convertTo(image, CV_32FC1, 1.0 / (max_value - min_value), - min_value / (max_value - min_value));
-	cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
-
-	return image;
-}
-
-	
 int main(int argc, char **argv) {
   
-  // load models
-  torch::jit::script::Module model_bcls =
-      get_module("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_bcls-cpu.pt");
-  torch::jit::script::Module model_bdet =
-      get_module("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_bdet-cpu.pt");
-  torch::jit::script::Module model_fdet =
-      get_module("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_fdet-cpu.pt");
+  // create models
+  torch::jit::script::Module tmodel_blood_cls = getModule("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_blood_cls-cpu.pt", device);
+  torch::jit::script::Module tmodel_blood_det = getModule("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_blood_det-cpu.pt", device);
+  torch::jit::script::Module tmodel_face_det = getModule("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_face_det-cpu.pt", device);
 
   // read input
   std::string directory{"/home/ajvalenc/Datasets/spectronix/thermal/blood/16bit/s01_thermal_cloth_01_MicroCalibir_M0000334/"};
+  //std::string directory{"/home/ajvalenc/Datasets/spectronix/thermal/blood/8bit/Pos/"};
+
   std::vector<cv::String> filenames;
   cv::glob(directory, filenames, false);
 
@@ -65,65 +31,47 @@ int main(int argc, char **argv) {
   while (i < filenames.size()) {
 
 	  // read image (16-bit)
-	  cv::Mat img = cv::imread(filenames[i], cv::IMREAD_ANYDEPTH);
-	  cv::Mat img_raw = img.clone();
-		
-	  // scale image
-	  img = sixteen_bits2eight_bits(img);
+	  cv::Mat img_raw = cv::imread(filenames[i], cv::IMREAD_ANYDEPTH);
+	  cv::Mat img = img_raw.clone();
 
-	  // convert image to torch compatible input
-	  auto tensor_img = torch::from_blob(img.data, {img.rows, img.cols, img.channels()}).to(device);
-	  tensor_img = tensor_img.permute({2, 0, 1});
-	  tensor_img.unsqueeze_(0);
-
-	  std::vector<torch::jit::IValue> inputs;
-	  inputs.push_back(tensor_img);
+	  // process image
+	  torch::Tensor img_tensor = processImage(img);
+  	  
+	  // format tensor to list ivalue required by torchscript model
+  	  std::vector<torch::jit::IValue> inputs;
+  	  inputs.push_back(img_tensor);
 
 	  // dry run 
 	  torch::NoGradGuard no_grad; // ensure autograd is off
 	  for (size_t i = 0; i < 2; ++i){
-		  model_bcls.forward(inputs);
-		  model_bdet.forward(inputs);
-		  model_fdet.forward(inputs);
+		  tmodel_blood_cls.forward(inputs);
+		  tmodel_blood_det.forward(inputs);
+		  tmodel_face_det.forward(inputs);
 	  }
 
 	  // inference
-	  auto start = std::chrono::high_resolution_clock::now();
-	  at::Tensor out_bcls = model_bcls.forward(inputs).toTensor();
-	  auto end = std::chrono::high_resolution_clock::now();
-	  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
-	  std::cout << "\n\nBlood classification\n"
-				<< "runtime " << duration.count() << "\n"
-				<< "classes " << out_bcls << "\n";
+	  torch::IValue out_blood_cls = tmodel_blood_cls.forward(inputs);
+	  std::cout << "\n\nBlood Classification\n"<< out_blood_cls << "\n";
 
-	  start = std::chrono::high_resolution_clock::now();
-	  auto out_bdet = model_bdet.forward(inputs)
-						  .toTuple()
-						  ->elements()
-						  .at(1)
-						  .toList()
-						  .get(0)
-						  .toGenericDict();
-	  end = std::chrono::high_resolution_clock::now();
-	  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
-	  std::cout << "\nBlood detection\n"
-				<< "runtime " << duration.count() << "\n"
-				<< out_bdet << "\n";
+	  torch::IValue out_blood_det = tmodel_blood_det.forward(inputs);
+	  std::cout << "\nBlood detection\n" << out_blood_det << "\n";
+		
+	  torch::IValue out_face_det = tmodel_face_det.forward(inputs);
+	  std::cout << "\nFace detection\n" << out_face_det << "\n";
 
+	  // fever detection
+	  DifferentialTemperature diff_temp_m334(334);
+      torch::Tensor boxes = getBoundingBoxes(out_face_det);
+	
+	  for (size_t i =0; i < boxes.sizes()[0]; ++i) {
 
-	  start = std::chrono::high_resolution_clock::now();
-	  auto out_fdet = model_fdet.forward(inputs)
-						  .toTuple()
-						  ->elements()
-						  .at(1)
-						  .toList()
-						  .get(0)
-						  .toGenericDict();
-	  end = std::chrono::high_resolution_clock::now();
-	  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
-	  std::cout << "\nFace detection\n"
-				<< "runtime " << duration.count() << "\n"
-				<< out_fdet << "\n";
+		  auto [maxdiff_temp, meandiff_temp, patch_temp] = diff_temp_m334.getTemperature(img_raw, boxes[i]);
+
+		 std::cout << "Fever temps " << maxdiff_temp << "  " << meandiff_temp << "  " << patch_temp << "\n";
+
+		//cv::Rect box(left, top, (right-left), (bottom-top));
+		//cv::rectangle(img, box, cv::Scalar(0,255,0), 2);
+	  }
 
 	  // display results
 	  cv::imshow("Thermal Camera", img_raw);
