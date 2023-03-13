@@ -10,9 +10,9 @@ from torchvision.models import resnet101
 from yolort.models.yolo import YOLO
 
 # configuration
-weights_blood_cls = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/pytorch/Blood_Classification_resnet101-v2.pth"
-weights_blood_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/pytorch/Blood_Detection_Yolov5.pt"
-weights_face_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/pytorch/Face_Detection_Yolov5-v2.pt"
+weights_blood_cls = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Blood_Classification_resnet101.pth"
+weights_blood_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Blood_Detection_Yolov5.pt"
+weights_face_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Face_Detection_Yolov5.pt"
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 use_cuda = False if str(device) == "cpu" else True

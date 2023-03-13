@@ -8,9 +8,9 @@ from torchvision.datasets import ImageFolder
 from torchvision.transforms import Compose, ToTensor
 
 # configuration
-weights_blood_cls = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_blood_cls-cpu.pt"
-weights_blood_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_blood_det-cpu.pt"
-weights_face_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_face_det-cpu.pt"
+weights_blood_cls = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_cls-cpu.pt"
+weights_blood_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det-cpu.pt"
+weights_face_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_face_det-cpu.pt"
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 

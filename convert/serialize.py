@@ -12,9 +12,9 @@ from torchvision.models import resnet101
 from yolort.models import YOLO
 
 # configuration
-weights_blood_cls = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/pytorch/Blood_Classification_resnet101-v2.pth"
-weights_blood_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/pytorch/Blood_Detection_Yolov5.pt"
-weights_face_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/pytorch/Face_Detection_Yolov5-v2.pt"
+weights_blood_cls = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Blood_Classification_resnet101.pth"
+weights_blood_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Blood_Detection_Yolov5.pt"
+weights_face_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Face_Detection_Yolov5.pt"
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -39,7 +39,7 @@ model_blood_cls.to(device)
 
 x = torch.rand((1,3,480,640), dtype=torch.float32).to(device)
 tmodel_blood_cls = torch.jit.trace(model_blood_cls, x)
-tmodel_blood_cls.save("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_bcls-{}.pt".format(device).replace(":0",""))
+tmodel_blood_cls.save("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_cls-{}.pt".format(device).replace(":0",""))
 
 # blood object detection
 model_blood_det = YOLO.load_from_yolov5(weights_blood_det, score_thresh, nms_thresh)
@@ -47,7 +47,7 @@ model_blood_det.eval()
 model_blood_det = model_blood_det.to(device)
 
 tmodel_blood_det = torch.jit.script(model_blood_det)
-tmodel_blood_det.save("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_bdet-{}.pt".format(device).replace(":0",""))
+tmodel_blood_det.save("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det-{}.pt".format(device).replace(":0",""))
 
 # face object detection
 model_face_det = YOLO.load_from_yolov5(weights_face_det, score_thresh, nms_thresh)
@@ -55,4 +55,4 @@ model_face_det.eval()
 model_face_det = model_face_det.to(device)
 
 tmodel_face_det = torch.jit.script(model_face_det)
-tmodel_face_det.save("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood/weights/torchscript/traced_fdet-{}.pt".format(device).replace(":0",""))
+tmodel_face_det.save("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_face_det-{}.pt".format(device).replace(":0",""))

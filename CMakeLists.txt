@@ -8,16 +8,14 @@ find_package(Torch REQUIRED)
 find_package(TorchVision REQUIRED) 
 find_package(OpenCV REQUIRED)
 
-include_directories(include)
-
-add_library(utils src/utils.cpp)
+add_library(blood_fever blood_fever.cpp)
 
 add_executable(main main.cpp)
 
-target_link_libraries(utils ${OpenCV_LIBS} TorchVision::TorchVision)
+target_link_libraries(blood_fever ${OpenCV_LIBS} TorchVision::TorchVision)
 
 target_compile_features(main PUBLIC cxx_range_for)
-target_link_libraries(main utils)
+target_link_libraries(main blood_fever)
 
 if (MSVC)
   file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
