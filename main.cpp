@@ -58,7 +58,13 @@ int main(int argc, char **argv) {
 
 	  // read image (16-bit)
 	  cv::Mat img_raw = cv::imread(filenames[i], cv::IMREAD_ANYDEPTH);
-	  int camera = 337;
+	  cv::Mat img = img_raw.clone();
+	  int cam337 = 337;
+
+	  // process image
+	  torch::Tensor img_tensor = processImage(img);
+      std::vector<torch::jit::IValue> inputs;
+      inputs.push_back(img_tensor);
 
 	  // inference
 	  //torch::IValue out_blood_cls = tmodel_blood_cls.forward(inputs);
@@ -68,7 +74,10 @@ int main(int argc, char **argv) {
 	  //std::cout << "\nBlood detection\n" << out_blood_det << "\n";
 		
 	  auto start = std::chrono::high_resolution_clock::now();
-	  bool fever = detectFever(tmodel_face_det, img_raw, camera);
+	  torch::IValue out_face_det = tmodel_face_det.forward(inputs);
+	  std::cout << "\nFace detection\n" << out_face_det << "\n";
+
+	  bool fever = detectFever(out_face_det, img_raw, cam337);
 
 	  auto end = std::chrono::high_resolution_clock::now();
 	  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);

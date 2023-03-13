@@ -13,9 +13,8 @@ cv::Mat sixteenBits2EightBits(cv::Mat &image) {
 	return image;
 }
 
-torch::Tensor processImage(cv::Mat &image_raw) {
+torch::Tensor processImage(cv::Mat &image) {
 
-  cv::Mat image = image_raw.clone();
   if (image.depth() == CV_16U) {
      image = sixteenBits2EightBits(image);
   }
@@ -31,7 +30,7 @@ torch::Tensor processImage(cv::Mat &image_raw) {
   return image_tensor;
 }
 
-std::tuple<torch::Tensor,torch::Tensor,torch::Tensor> getPredictions(torch::IValue predictions){
+std::tuple<torch::Tensor,torch::Tensor,torch::Tensor> getPredictions(torch::IValue &predictions){
 	
 	auto detections = predictions.toTuple()->elements().at(1).toList().get(0).toGenericDict();
 	torch::Tensor boxes = detections.at("boxes").toTensor();
@@ -121,46 +120,39 @@ std::tuple<double, double, double> getTemperature(cv::Mat &image, torch::Tensor 
 	return {maxdiff_temperature, meandiff_temperature, patch_temperature};
 }
 
-bool detectFever(torch::jit::script::Module &model, cv::Mat &image, int camera_id) {
+bool detectFever(torch::IValue &output, cv::Mat &image, int camera_id) {
 
 	bool fever = false;
-	
-	torch::Tensor image_tensor = processImage(image);
-	// format tensor to list ivalue required by torchscript model
-        std::vector<torch::jit::IValue> inputs;
-        inputs.push_back(image_tensor);
-
-	torch::IValue output = model.forward(inputs);
 	auto [scores, boxes, labels] = getPredictions(output);
 	
 	for (size_t i =0; i < boxes.sizes()[0]; ++i) {
            auto [maxdiff_temp, meandiff_temp, patch_temp] = getTemperature(image, boxes[i], camera_id);
            int category = labels[i].item<int>();
            if (category == 0) {
-           	std::cout << "Face detected, ";
+           	std::cout << "Face detected ";
            	
            	if (maxdiff_temp > 37) { //treshold for the warmest region on the face
-           	   std::cout << " Fever \n";
+           	   std::cout << "(Fever): ";
            	   fever = fever || true;
            	}
            	else {
-           	   std::cout << " No Fever \n";
+           	   std::cout << "(No Fever): ";
            	   fever = fever || false;
            	}
            }	
            else if (category == 1) {
-                std::cout << "Forehead detected, ";
+                std::cout << "Forehead detected ";
                 
                 if (maxdiff_temp > 35) { //treshold for the warmest region on the forehead
-           	   std::cout << " Fever \n";
+           	   std::cout << "(Fever): ";
            	   fever = fever || true;
            	}
            	else {
-           	   std::cout << " No Fever \n";
+           	   std::cout << "(No Fever): ";
            	   fever = fever || false;
            	}  	
             }
-        std::cout << "Temperatures: " << maxdiff_temp << "  " << meandiff_temp << "  " << patch_temp << "\n";
+        std::cout << maxdiff_temp << "  " << meandiff_temp << "  " << patch_temp << "\n";
         }
         return fever;
 }

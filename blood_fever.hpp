@@ -10,7 +10,7 @@ cv::Mat sixteenBits2EightBits(cv::Mat &image);
 torch::Tensor processImage(cv::Mat &image_raw);
 
 // model predictions
-std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> getPredictions(torch::IValue predictions);
+std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> getPredictions(torch::IValue &predictions);
 
 // temperature calculation
 double transferFunction(double &radiometry, bool is_linear);
@@ -18,5 +18,5 @@ double transferFunction(double &radiometry, bool is_linear);
 std::tuple<double, double, double> getTemperature(cv::Mat &image, torch::Tensor boxes, int camera_id);
 
 // fever detection
-bool detectFever(torch::jit::script::Module &model, cv::Mat &image, int camera_id);
+bool detectFever(torch::IValue &output, cv::Mat &image, int camera_id);
 
