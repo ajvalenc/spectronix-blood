@@ -43,14 +43,14 @@ int main(int argc, char **argv) {
   cv::glob(directory, filenames, false);
 
   // dry run 
-	  std::vector<torch::jit::IValue> inputs;
+	  std::vector<torch::jit::IValue> input;
 	  auto img_rand = torch::rand({1,3,640,480});
-	  inputs.push_back(img_rand);
+	  input.push_back(img_rand);
 	  torch::NoGradGuard no_grad; // ensure autograd is off
 	  for (size_t i = 0; i < 2; ++i){
-		  tmodel_blood_cls.forward(inputs);
-		  tmodel_blood_det.forward(inputs);
-		  tmodel_face_det.forward(inputs);
+		  tmodel_blood_cls.forward(input);
+		  tmodel_blood_det.forward(input);
+		  tmodel_face_det.forward(input);
 	  }
 
   int i = 0;
@@ -58,23 +58,22 @@ int main(int argc, char **argv) {
 
 	  // read image (16-bit)
 	  cv::Mat img_raw = cv::imread(filenames[i], cv::IMREAD_ANYDEPTH);
-	  cv::Mat img = img_raw.clone();
 	  int cam337 = 337;
 
-	  // process image
-	  torch::Tensor img_tensor = processImage(img);
-      std::vector<torch::jit::IValue> inputs;
-      inputs.push_back(img_tensor);
+	  // process input
+	  cv::Mat img = processImage(img_raw);
+	  torch::Tensor ts_img = toTensor(img);
+      std::vector<torch::jit::IValue> input = toInput(ts_img);
 
 	  // inference
-	  //torch::IValue out_blood_cls = tmodel_blood_cls.forward(inputs);
+	  //torch::IValue out_blood_cls = tmodel_blood_cls.forward(input);
 	  //std::cout << "\n\nBlood Classification\n"<< out_blood_cls << "\n";
 
-	  //torch::IValue out_blood_det = tmodel_blood_det.forward(inputs);
+	  //torch::IValue out_blood_det = tmodel_blood_det.forward(input);
 	  //std::cout << "\nBlood detection\n" << out_blood_det << "\n";
 		
 	  auto start = std::chrono::high_resolution_clock::now();
-	  torch::IValue out_face_det = tmodel_face_det.forward(inputs);
+	  torch::IValue out_face_det = tmodel_face_det.forward(input);
 	  std::cout << "\nFace detection\n" << out_face_det << "\n";
 
 	  bool fever = detectFever(out_face_det, img_raw, cam337);

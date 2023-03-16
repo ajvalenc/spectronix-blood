@@ -13,21 +13,34 @@ cv::Mat sixteenBits2EightBits(cv::Mat &image) {
 	return image;
 }
 
-torch::Tensor processImage(cv::Mat &image) {
+cv::Mat processImage(cv::Mat &image_raw) {
 
+ cv::Mat image = image_raw.clone();
+
+ // fix image type
   if (image.depth() == CV_16U) {
      image = sixteenBits2EightBits(image);
   }
-  // scale image
+  // scale image content
   cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
   image.convertTo(image, CV_32FC3, 1.0f / 255.0f);
 
-  // Convert image to torch tensor
-  torch::Tensor image_tensor = torch::from_blob(image.data, {image.rows, image.cols, 3});
-  image_tensor = image_tensor.permute({2, 0, 1});
-  image_tensor.unsqueeze_(0);
+ return image;
+}
 
-  return image_tensor;
+ torch::Tensor toTensor(cv::Mat &image) {
+
+  // Convert image to torch tensor
+  torch::Tensor tensor_image = torch::from_blob(image.data, {image.rows, image.cols, 3});
+  tensor_image = tensor_image.permute({2, 0, 1});
+  tensor_image.unsqueeze_(0);
+
+  return tensor_image;
+}
+
+std::vector<torch::jit::IValue> toInput(torch::Tensor &tensor_image) {
+
+	return std::vector<torch::jit::IValue>{tensor_image};
 }
 
 std::tuple<torch::Tensor,torch::Tensor,torch::Tensor> getPredictions(torch::IValue &predictions){

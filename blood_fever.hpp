@@ -6,8 +6,10 @@
 // image conversion (16bits -> 8bits)
 cv::Mat sixteenBits2EightBits(cv::Mat &image);
 
-// image processing block
-torch::Tensor processImage(cv::Mat &image_raw);
+// input processing block
+cv::Mat processImage(cv::Mat &image_raw);
+torch::Tensor toTensor(cv::Mat &image);
+std::vector<torch::jit::IValue> toInput(torch::Tensor &tensor_image);
 
 // model predictions
 std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> getPredictions(torch::IValue &predictions);
