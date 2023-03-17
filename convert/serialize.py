@@ -13,7 +13,8 @@ from yolort.models import YOLO
 
 # configuration
 weights_blood_cls = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Blood_Classification_resnet101.pth"
-weights_blood_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Blood_Detection_Yolov5.pt"
+weights_blood_det_th = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Blood_Detection_Yolov5_th.pt"
+weights_blood_det_ir = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Blood_Detection_Yolov5_ir.pt"
 weights_face_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Face_Detection_Yolov5.pt"
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -42,12 +43,21 @@ tmodel_blood_cls = torch.jit.trace(model_blood_cls, x)
 tmodel_blood_cls.save("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_cls-{}.pt".format(device).replace(":0",""))
 
 # blood object detection
-model_blood_det = YOLO.load_from_yolov5(weights_blood_det, score_thresh, nms_thresh)
-model_blood_det.eval()
-model_blood_det = model_blood_det.to(device)
+## thermal camera
+model_blood_det_th = YOLO.load_from_yolov5(weights_blood_det_th, score_thresh, nms_thresh)
+model_blood_det_th.eval()
+model_blood_det_th = model_blood_det_th.to(device)
 
-tmodel_blood_det = torch.jit.script(model_blood_det)
-tmodel_blood_det.save("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det-{}.pt".format(device).replace(":0",""))
+tmodel_blood_det_th = torch.jit.script(model_blood_det_th)
+tmodel_blood_det_th.save("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_th-{}.pt".format(device).replace(":0",""))
+
+## ir camera
+model_blood_det_ir = YOLO.load_from_yolov5(weights_blood_det_ir, score_thresh, nms_thresh)
+model_blood_det_ir.eval()
+model_blood_det_ir = model_blood_det_ir.to(device)
+
+tmodel_blood_det_ir = torch.jit.script(model_blood_det_ir)
+tmodel_blood_det_ir.save("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_ir-{}.pt".format(device).replace(":0",""))
 
 # face object detection
 model_face_det = YOLO.load_from_yolov5(weights_face_det, score_thresh, nms_thresh)

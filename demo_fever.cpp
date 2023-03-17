@@ -1,6 +1,7 @@
 #include <string>
 #include <chrono>
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/utils/filesystem.hpp>
 
 #include <torch/torch.h>
 #include <torch/script.h>
@@ -36,10 +37,9 @@ int main(int argc, char **argv) {
 
   // read input
   std::string directory{"/home/ajvalenc/Datasets/spectronix/thermal/fever/16bit/M337/"};
-  //std::string directory{"/home/ajvalenc/Datasets/spectronix/thermal/blood/8bit/Pos/"};
 
   std::vector<cv::String> filenames;
-  cv::glob(directory, filenames, false);
+  cv::utils::fs::glob(directory, "", filenames, false);
 
   // dry run 
 	  std::vector<torch::jit::IValue> input;
