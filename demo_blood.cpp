@@ -38,8 +38,8 @@ int main(int argc, char **argv) {
 
 
   // read input
-  std::string directory_th{"/home/ajvalenc/Datasets/spectronix/thermal/blood/16bit/s01_thermal_cloth_01_MicroCalibir_M0000334/"};
-  std::string directory_ir{"/home/ajvalenc/Datasets/spectronix/ir/blood/registered/s01_thermal_cloth_01_000028493212_ir/"};
+  std::string directory_th{"/home/ajvalenc/Datasets/spectronix/thermal/blood/16bit/s21_thermal_cloth_01_MicroCalibir_M0000334/"};
+  std::string directory_ir{"/home/ajvalenc/Datasets/spectronix/ir/blood/registered/s21_thermal_cloth_01_000028493212_ir/"};
 
   std::vector<cv::String> filenames;
   cv::utils::fs::glob_relative(directory_ir, "", filenames, false); //ir has less entries
@@ -59,7 +59,8 @@ int main(int argc, char **argv) {
 
 	  // set camera
 	  int cam337 = 337;
-
+	  double iou_thresh = 0.2, detectable_blood_thresh = 100;
+	
 	  // read images
 	  cv::Mat img_th = cv::imread(directory_th + "/" + filenames[i], cv::IMREAD_ANYDEPTH);
 	  cv::Mat img_ir = cv::imread(directory_ir + "/" + filenames[i], cv::IMREAD_ANYDEPTH);
@@ -78,10 +79,11 @@ int main(int argc, char **argv) {
 
 	  torch::IValue out_blood_det_th = tmodel_blood_det_th.forward(input_th);
 	  torch::IValue out_blood_det_ir = tmodel_blood_det_ir.forward(input_ir);
-	  
+
       std::cout << "\nBlood detection\n";
 	  std::cout << "Thermal: " << out_blood_det_th << "\n";
 	  std::cout << "IR: " << out_blood_det_ir << "\n";
+	  bool blood = detectBlood(out_blood_det_th, out_blood_det_ir, img_ir, iou_thresh, detectable_blood_thresh);
 
 	  auto end = std::chrono::high_resolution_clock::now();
 	  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);

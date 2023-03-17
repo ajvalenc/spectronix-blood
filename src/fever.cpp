@@ -75,17 +75,16 @@ std::tuple<double, double, double> getTemperature(cv::Mat &image, torch::Tensor 
 	mean_radiometry_detect =  u1_dim.val[0];
 	cv::Scalar u2_dim = cv::mean(reference_patch);
 	mean_radiometry_reference = u2_dim.val[0];
+
 	// compute temperature stats
 	double max_temperature, mean_temperature, patch_temperature;
-
 	max_temperature = transferFunction(max_radiometry_detect, camera_id, false);
 	mean_temperature = transferFunction(mean_radiometry_detect, camera_id, false);
 	patch_temperature = transferFunction(mean_radiometry_reference, camera_id, true);
+
 	// compute differential temperature
 	double maxdiff_temperature = max_temperature - patch_temperature + reference_temperature;
 	double meandiff_temperature = mean_temperature - patch_temperature + reference_temperature;
-
-	//std::tuple<double, double, double> output(maxdiff_temperature,meandiff_temperature,patch_temperature);
 
 	return {maxdiff_temperature, meandiff_temperature, patch_temperature};
 }
@@ -94,33 +93,24 @@ bool detectFever(torch::IValue &output, cv::Mat &image, int camera_id, int face_
 
 	bool fever = false;
 	auto [scores, boxes, labels] = getPredictions(output);
+
+	if (labels.sizes() == 0) return fever; //early break when no detection is found
 	
 	for (size_t i =0; i < boxes.sizes()[0]; ++i) {
            auto [maxdiff_temp, meandiff_temp, patch_temp] = getTemperature(image, boxes[i], camera_id);
            int category = labels[i].item<int>();
            if (category == 0) {
-           	std::cout << "Face detected ";
-           	
            	if (maxdiff_temp > face_thresh) { //treshold for the warmest region on the face
-           	   std::cout << "(Fever): ";
-           	   fever = fever || true;
-           	}
-           	else {
-           	   std::cout << "(No Fever): ";
-           	   fever = fever || false;
-           	}
+           	   std::cout << "Fever face detected! ";
+           	   fever = true;
+           	   }
            }	
            else if (category == 1) {
-                std::cout << "Forehead detected ";
                 
                 if (maxdiff_temp > forehead_thresh) { //treshold for the warmest region on the forehead
-           	   std::cout << "(Fever): ";
-           	   fever = fever || true;
-           	}
-           	else {
-           	   std::cout << "(No Fever): ";
-           	   fever = fever || false;
-           	}  	
+           	   std::cout << "Fever forehead detected! ";
+           	   fever = true;
+           		}
             }
         std::cout << maxdiff_temp << "  " << meandiff_temp << "  " << patch_temp << "\n";
         }

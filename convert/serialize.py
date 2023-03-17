@@ -20,8 +20,8 @@ weights_face_det = "/home/ajvalenc/OneDrive - University of Ottawa/Projects/spec
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # load model parameters
-score_thresh = 0.20
-nms_thresh = 0.45
+score_thresh = 0.50
+nms_thresh = 0.20
 
 # blood binary classifer
 ## define pretrained model

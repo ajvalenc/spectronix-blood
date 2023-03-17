@@ -6,5 +6,7 @@
 std::tuple<torch::Tensor, torch::Tensor, torch::Tensor> getPredictions(torch::IValue &predictions);
 
 // blood detection
-bool detectBlood(torch::IValue &output_th, torch::IValue &output_ir, float region_thresh, int brightness_thresh);
+double getMeanPatch(cv::Mat &image, torch::Tensor box);
+double getIOU(torch::Tensor box_1, torch::Tensor box_2);
+bool detectBlood(torch::IValue &output_th, torch::IValue &output_ir, cv::Mat &image_ir, double region_thresh, double brightness_thresh);
 
