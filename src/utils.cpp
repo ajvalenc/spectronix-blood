@@ -28,10 +28,10 @@ cv::Mat processImage(cv::Mat &image) {
  return image_prc;
 }
 
- torch::Tensor toTensor(cv::Mat &image) {
+ torch::Tensor toTensor(cv::Mat &image, torch::Device device) {
 
   // Convert image to torch tensor
-  torch::Tensor tensor_image = torch::from_blob(image.data, {image.rows, image.cols, 3});
+  torch::Tensor tensor_image = torch::from_blob(image.data, {image.rows, image.cols, 3}).to(device);
   tensor_image = tensor_image.permute({2, 0, 1});
   tensor_image.unsqueeze_(0);
 

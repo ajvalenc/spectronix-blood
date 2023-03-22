@@ -112,7 +112,7 @@ bool detectFever(torch::IValue &output, cv::Mat &image, int camera_id, int face_
            	   fever = true;
            		}
             }
-        std::cout << maxdiff_temp << "  " << meandiff_temp << "  " << patch_temp << "\n";
+        //std::cout << maxdiff_temp << "  " << meandiff_temp << "  " << patch_temp << "\n";
         }
         return fever;
 }
