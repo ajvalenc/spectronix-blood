@@ -55,6 +55,9 @@ int main(int argc, char **argv) {
   std::cout << "\nWarmuptime:  " << duration.count() << " Fps: " << 1000.0f / duration.count() << "\n";
 
   int i = 0;
+  float avg_runtime_prc = 0.0f;
+  float avg_runtime_det = 0.0f;
+  float avg_runtime_dm = 0.0f;
   float avg_runtime = 0.0f;
   while (i < filenames.size()) {
 
@@ -72,15 +75,24 @@ int main(int argc, char **argv) {
       std::vector<torch::jit::IValue> input_th = toInput(ts_img_th);
 
 	  // inference
-
+	  auto mid1 = std::chrono::high_resolution_clock::now();
 	  torch::IValue out_face_det = tmodel_face_det.forward(input_th);
 
+    // decision making
+    auto mid2 = std::chrono::high_resolution_clock::now();
 	  bool fever = detectFever(out_face_det, img_th, cam_id, face_thresh, forehead_thresh);
 
 	  auto end = std::chrono::high_resolution_clock::now();
-	  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
-	  std::cout << "\nFace detection:\n" << out_face_det << "\n";
+    auto duration_prc = std::chrono::duration_cast<std::chrono::milliseconds>(mid1-start);
+    auto duration_det = std::chrono::duration_cast<std::chrono::milliseconds>(mid2-mid1);
+    auto duration_dm = std::chrono::duration_cast<std::chrono::milliseconds>(end-mid2);
+    auto duration_avg = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
 	  avg_runtime += duration.count();
+	  avg_runtime_prc += duration_prc.count();
+	  avg_runtime_det += duration_det.count();
+	  avg_runtime_dm += duration_dm.count();
+	  std::cout << "\nFace detection:\n" << out_face_det << "\n";
+	  std::cout << "\nRuntime Processing:  " << avg_runtime_prc / (i+1.0f) << "\nRuntime detection:  " << avg_runtime_det / (i+1.0f) << "\nRuntime Decision Making:  " << avg_runtime_dm / (i+1.0f);
 	  std::cout << "\nRuntime:  " << avg_runtime / (i+1.0f) << " Fps: " << 1000.0f * (i+1.0f) /  avg_runtime << "\n";
 
 	  // display results

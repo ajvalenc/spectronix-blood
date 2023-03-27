@@ -76,7 +76,8 @@ bool detectBlood(torch::IValue &output_th, torch::IValue &output_ir, cv::Mat &im
 	for (size_t i=0; i < boxes_th.sizes()[0]; ++i) {
 
 		if (labels_ir.sizes() == 0) { //no liquid ir
-			if (labels_th[i].item<int>() >= 2) { //warm liquid thermal
+			int category = labels_th[i].item<int>();
+      if (category >= 2) { //warm liquid thermal
 
 				double mean_patch_ir = getMeanPatch(image_ir, boxes_th[i]);
 				if (mean_patch_ir < brightness_thresh) {
