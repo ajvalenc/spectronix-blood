@@ -1,0 +1,41 @@
+ARG BASE=ubuntu20.04
+ARG CUDA=11.8.0
+ARG CUDNN=8
+
+FROM nvidia/cuda:${CUDA}-cudnn${CUDNN}-devel-${BASE}
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ca-certificates \
+    wget \
+    unzip \
+    libopencv-dev \
+    python3-dev \
+    python3-pip \
+    && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+RUN pip3 install cmake 
+
+# Build versions
+ARG TORCH=2.0.0
+ARG TORCHVISION=0.15.1
+
+# PyTorch library
+ARG CUDA
+RUN CUDA_MAJOR_MINOR=$(echo ${CUDA} | perl -pe 's/(\d+)\.(\d+)\.\d+/$1$2/') && \
+    wget https://download.pytorch.org/libtorch/cu${CUDA_MAJOR_MINOR}/libtorch-cxx11-abi-shared-with-deps-${TORCH}%2Bcu${CUDA_MAJOR_MINOR}.zip -O libtorch.zip && \
+    unzip libtorch.zip -d /usr/local/ && \
+    rm libtorch.zip
+ENV Torch_DIR=/usr/local/libtorch
+
+# Torchvision library
+RUN wget https://github.com/pytorch/vision/archive/refs/tags/v${TORCHVISION}.zip && \
+    unzip v${TORCHVISION}.zip && \
+    rm v${TORCHVISION}.zip && \ 
+    cmake -B vision-${TORCHVISION}/build -S vision-${TORCHVISION} -DCMAKE_INSTALL_PREFIX=/usr/local/torchvision -DUSE_PYTHON=on -DWITH_CUDA=on && \
+    cmake --build vision-${TORCHVISION}/build -j $(nproc) && \
+    cmake --install vision-${TORCHVISION}/build
+ENV TorchVision_DIR=/usr/local/torchvision

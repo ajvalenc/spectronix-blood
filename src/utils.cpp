@@ -42,4 +42,3 @@ std::vector<torch::jit::IValue> toInput(torch::Tensor &tensor_image) {
 
 	return std::vector<torch::jit::IValue>{tensor_image};
 }
-

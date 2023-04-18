@@ -1,4 +1,4 @@
-#include "fever.hpp"
+#include "fever_combined.hpp"
 
 std::tuple<torch::Tensor,torch::Tensor,torch::Tensor> getFeverPredictions(torch::IValue &predictions){
 	
@@ -97,15 +97,18 @@ bool detectFever(torch::IValue &output, cv::Mat &image, int camera_id, int face_
 	if (labels.sizes() == 0) return fever; //early break when no detection is found
 	
 	for (size_t i =0; i < boxes.sizes()[0]; ++i) {
-           auto [maxdiff_temp, meandiff_temp, patch_temp] = getTemperature(image, boxes[i], camera_id);
            int category = labels[i].item<int>();
-           if (category == 0) {
+           
+           if (category <= 1 || category >= 4) continue; //early break when no face or forehead is found
+
+           auto [maxdiff_temp, meandiff_temp, patch_temp] = getTemperature(image, boxes[i], camera_id);
+           if (category == 2) {
            	if (maxdiff_temp > face_thresh) { //treshold for the warmest region on the face
            	   std::cout << "Fever face detected! ";
            	   fever = true;
            	   }
            }	
-           else if (category == 1) {
+           else if (category == 3) {
                 
                 if (maxdiff_temp > forehead_thresh) { //treshold for the warmest region on the forehead
            	   std::cout << "Fever forehead detected! ";

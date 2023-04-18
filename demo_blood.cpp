@@ -12,7 +12,7 @@
 #include "utils.hpp"
 #include "blood.hpp"
 
-torch::Device device(torch::kCPU);
+torch::Device device(torch::kCUDA);
 
 torch::jit::script::Module getModule(const char *file_path) {
   torch::jit::script::Module module;
@@ -33,8 +33,8 @@ torch::jit::script::Module getModule(const char *file_path) {
 int main(int argc, char **argv) {
   
   // create models
-  torch::jit::script::Module tmodel_blood_det_th = getModule("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_th-cpu.pt");
-  torch::jit::script::Module tmodel_blood_det_ir = getModule("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_ir-cpu.pt");
+  torch::jit::script::Module tmodel_blood_det_th = getModule("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_th-cuda.pt");
+  torch::jit::script::Module tmodel_blood_det_ir = getModule("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_ir-cuda.pt");
 
 
   // read input
@@ -56,21 +56,23 @@ int main(int argc, char **argv) {
   }
   auto end = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
+std::cout << "\nWarmuptime:  " << duration.count() << " Fps: " << 1000.0f / duration.count() << "\n";
 
   int i = 0;
   float avg_runtime_prc = 0.0f;
   float avg_runtime_det = 0.0f;
   float avg_runtime_dm = 0.0f;
-  float avg_runtime = 0.0f;
+  float avg_runtime_total = 0.0f;
   while (i < filenames.size()) {
 
 	  // set camera
-	  int cam337 = 337;
+	  int cam_id = 337;
 	  double iou_thresh = 0.2, detectable_blood_thresh = 100;
 	
 	  // read images
 	  cv::Mat img_th = cv::imread(directory_th + "/" + filenames[i], cv::IMREAD_ANYDEPTH);
 	  cv::Mat img_ir = cv::imread(directory_ir + "/" + filenames[i], cv::IMREAD_ANYDEPTH);
+    std::cout << "\n Blood Detection - frame " << i;
 
 	  // process input
     auto start = std::chrono::high_resolution_clock::now();
@@ -96,16 +98,15 @@ int main(int argc, char **argv) {
     auto duration_prc = std::chrono::duration_cast<std::chrono::milliseconds>(mid1-start);
     auto duration_det = std::chrono::duration_cast<std::chrono::milliseconds>(mid2-mid1);
     auto duration_dm = std::chrono::duration_cast<std::chrono::milliseconds>(end-mid2);
-	  auto duration_avg = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
+	  auto duration_total = std::chrono::duration_cast<std::chrono::milliseconds>(end-start);
     avg_runtime_prc += duration_prc.count();
     avg_runtime_det += duration_det.count();
     avg_runtime_dm += duration_dm.count();
-    avg_runtime += duration_avg.count();
-    std::cout << "\nBlood detection\n";
+    avg_runtime_total += duration_total.count();
 	  std::cout << "\nThermal: " << out_blood_det_th;
 	  std::cout << "\nIR: " << out_blood_det_ir;
 	  std::cout << "\nRuntime Processing:  " << avg_runtime_prc / (i+1.0f) << "\nRuntime detection:  " << avg_runtime_det / (i+1.0f) << "\nRuntime Decision Making:  " << avg_runtime_dm / (i+1.0f);
-	  std::cout << "\nRuntime:  " << avg_runtime / (i+1.0f) << " Fps: " << 1000.0f * (i+1.0f) /  avg_runtime << "\n";
+	  std::cout << "\nRuntime:  " << avg_runtime_total / (i+1.0f) << " Fps: " << 1000.0f * (i+1.0f) /  avg_runtime_total << "\n";
     
 	  cv::imshow("Thermal Camera", img_ir);
 	  if ((char)cv::waitKey(5) >0) break;

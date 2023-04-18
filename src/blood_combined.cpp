@@ -1,4 +1,4 @@
-#include "blood.hpp"
+#include "blood_combined.hpp"
 
 const double EPSILON = 1e-5;
 
@@ -77,25 +77,25 @@ bool detectBlood(torch::IValue &output_th, torch::IValue &output_ir, cv::Mat &im
 
 		if (labels_ir.sizes() == 0) { //no liquid ir
 			int category = labels_th[i].item<int>();
-      if (category >= 2) { //warm liquid thermal
-
+      
+			if (category >= 4) { //warm liquid thermal
 				double mean_patch_ir = getMeanPatch(image_ir, boxes_th[i]);
 				if (mean_patch_ir < brightness_thresh) {
 					std::cout << "\nWarm liquid detected!";
 					blood = true;
 				}
 			}
-		}
-		else { //dark liquid ir
-			for (size_t j=0; j < boxes_ir.sizes()[0]; ++j) {
-				double iou = getIOU(boxes_th[i], boxes_ir[j]);
-				if (iou >= region_thresh) {
-					std::cout << "\nDark liquid matching detected!";
-					blood = true;
+			else { //dark liquid ir
+				if (category == 2 || category == 3) continue; //ignore face detections
+				for (size_t j=0; j < boxes_ir.sizes()[0]; ++j) {
+					double iou = getIOU(boxes_th[i], boxes_ir[j]);
+					if (iou >= region_thresh) {
+						std::cout << "\nDark liquid matching detected!";
+						blood = true;
+					}
 				}
 			}
 		}
-
 	}
 
 	return blood;
