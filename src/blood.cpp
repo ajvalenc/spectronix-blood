@@ -75,10 +75,9 @@ bool detectBlood(torch::IValue &output_th, torch::IValue &output_ir, cv::Mat &im
 	auto [scores_ir, boxes_ir, labels_ir] = getBloodPredictions(output_ir);
 	for (size_t i=0; i < boxes_th.sizes()[0]; ++i) {
 
+		int category = labels_th[i].item<int>();
 		if (labels_ir.sizes() == 0) { //no liquid ir
-			int category = labels_th[i].item<int>();
       if (category >= 2) { //warm liquid thermal
-
 				double mean_patch_ir = getMeanPatch(image_ir, boxes_th[i]);
 				if (mean_patch_ir < brightness_thresh) {
 					std::cout << "\nWarm liquid detected!";

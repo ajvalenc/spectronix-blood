@@ -13,7 +13,7 @@ from torchvision.models import resnet101
 from yolort.models import YOLO
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--weights_det_th", type=str, default="/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Detection_Yolov5m_th.pt")
+parser.add_argument("--weights_det_th", type=str, default="/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Detection_Yolov5s_th.pt")
 parser.add_argument("--score_thresh",  type=float, default=0.2) 
 parser.add_argument("--nms_thresh",  type=float, default=0.4) 
 args = parser.parse_args()
