@@ -34,8 +34,8 @@ torch::jit::script::Module getModule(const char *file_path) {
 int main(int argc, char **argv) {
   
   // create models
-  torch::jit::script::Module tmodel_det_th = getModule("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_det_th-cuda.pt");
-  torch::jit::script::Module tmodel_det_ir = getModule("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_ir-cuda.pt");
+  torch::jit::script::Module tmodel_det_th = getModule("/home/ajvalenc/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_det_th-cuda.pt");
+  torch::jit::script::Module tmodel_det_ir = getModule("/home/ajvalenc/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_ir-cuda.pt");
 
 
   // read input
@@ -78,11 +78,13 @@ std::cout << "\nWarmuptime:  " << duration.count() << " Fps: " << 1000.0f / dura
      
     // process input
     auto start = std::chrono::high_resolution_clock::now();
-	  cv::Mat img_prc_th = processImage(img_th);
+    double max_value_th = 30100.0;
+	  cv::Mat img_prc_th = processImage(img_th, max_value_th);
 	  torch::Tensor ts_img_th = toTensor(img_prc_th, device);
       std::vector<torch::jit::IValue> input_th = toInput(ts_img_th);
 
-	  cv::Mat img_prc_ir = processImage(img_ir);
+    double max_value_ir = 395.0;
+	  cv::Mat img_prc_ir = processImage(img_ir, max_value_ir);
 	  torch::Tensor ts_img_ir = toTensor(img_prc_ir, device);
       std::vector<torch::jit::IValue> input_ir = toInput(ts_img_ir);
 

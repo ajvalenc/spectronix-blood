@@ -33,13 +33,13 @@ torch::jit::script::Module getModule(const char *file_path) {
 int main(int argc, char **argv) {
   
   // create models
-  torch::jit::script::Module tmodel_blood_det_th = getModule("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_th-cuda.pt");
-  torch::jit::script::Module tmodel_blood_det_ir = getModule("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_ir-cuda.pt");
-
+  torch::jit::script::Module tmodel_blood_det_th = getModule("/home/ajvalenc/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_th-cuda.pt");
+  torch::jit::script::Module tmodel_blood_det_ir = getModule("/home/ajvalenc/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_ir-cuda.pt");
 
   // read input
   std::string directory_th{"/home/ajvalenc/Datasets/spectronix/thermal/blood/16bit/s21_thermal_cloth_01_MicroCalibir_M0000334/"};
-  std::string directory_ir{"/home/ajvalenc/Datasets/spectronix/ir/blood/registered/s21_thermal_cloth_01_000028493212_ir/"};
+  //std::string directory_ir{"/home/ajvalenc/Datasets/spectronix/ir/blood/registered/s21_thermal_cloth_01_000028493212_ir/"};
+   std::string directory_ir{"/home/ajvalenc/Datasets/spectronix/ir/blood/raw/s21_thermal_cloth_01_000028493212_ir/"};
 
   std::vector<cv::String> filenames;
   cv::utils::fs::glob_relative(directory_ir, "", filenames, false); //ir has less entries
@@ -75,12 +75,14 @@ std::cout << "\nWarmuptime:  " << duration.count() << " Fps: " << 1000.0f / dura
     std::cout << "\n Blood Detection - frame " << i;
 
 	  // process input
+    double max_value_th = 30100.0;
     auto start = std::chrono::high_resolution_clock::now();
-	  cv::Mat img_prc_th = processImage(img_th);
+	  cv::Mat img_prc_th = processImage(img_th, max_value_th);
 	  torch::Tensor ts_img_th = toTensor(img_prc_th, device);
       std::vector<torch::jit::IValue> input_th = toInput(ts_img_th);
 
-	  cv::Mat img_prc_ir = processImage(img_ir);
+    double max_value_ir = 395.0;
+	  cv::Mat img_prc_ir = processImage(img_ir, max_value_ir);
 	  torch::Tensor ts_img_ir = toTensor(img_prc_ir, device);
       std::vector<torch::jit::IValue> input_ir = toInput(ts_img_ir);
 
@@ -108,7 +110,17 @@ std::cout << "\nWarmuptime:  " << duration.count() << " Fps: " << 1000.0f / dura
 	  std::cout << "\nRuntime Processing:  " << avg_runtime_prc / (i+1.0f) << "\nRuntime detection:  " << avg_runtime_det / (i+1.0f) << "\nRuntime Decision Making:  " << avg_runtime_dm / (i+1.0f);
 	  std::cout << "\nRuntime:  " << avg_runtime_total / (i+1.0f) << " Fps: " << 1000.0f * (i+1.0f) /  avg_runtime_total << "\n";
     
-	  cv::imshow("Thermal Camera", img_ir);
+	  cv::imshow("Ir Camera", img_prc_ir);
+	  cv::imwrite("original_ir.png", 255.f*img_prc_ir);
+	  
+	  // transformation
+	  cv::Mat img_ir_wp = cv::Mat::zeros(img_ir.rows, img_ir.cols, img_ir.type());
+	  cv::Mat m = (cv::Mat_<double>(2,3) << 1.0306, 0.01071, -45.058, -0.01071, 1.0306, -49.872);
+	  cv::warpAffine(img_prc_ir, img_ir_wp, m, img_ir.size());
+	  
+	  cv::imshow("Ir Camera Warp", img_ir_wp);
+	  cv::imwrite("warp_ir.png", 255.f*img_ir_wp);
+	  
 	  if ((char)cv::waitKey(5) >0) break;
 
 	  i += 1;

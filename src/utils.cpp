@@ -1,7 +1,6 @@
 #include "utils.hpp"
 
-cv::Mat sixteenBits2EightBits(cv::Mat &image) {
-	double max_value = 30100.0;
+cv::Mat sixteenBits2EightBits(cv::Mat &image, double max_value) {
 	double min_value;
     
     cv::minMaxIdx(image, &min_value);
@@ -13,13 +12,13 @@ cv::Mat sixteenBits2EightBits(cv::Mat &image) {
 	return image;
 }
 
-cv::Mat processImage(cv::Mat &image) {
+cv::Mat processImage(cv::Mat &image, double max_value) {
 
  cv::Mat image_prc = image.clone();
 
  // fix image type
   if (image_prc.depth() == CV_16U) {
-     image_prc = sixteenBits2EightBits(image_prc);
+     image_prc = sixteenBits2EightBits(image_prc, max_value);
   }
   // scale image content
   cv::cvtColor(image_prc, image_prc, cv::COLOR_GRAY2BGR);

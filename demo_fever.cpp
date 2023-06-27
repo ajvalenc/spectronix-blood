@@ -33,7 +33,7 @@ torch::jit::script::Module getModule(const char *file_path) {
 int main(int argc, char **argv) {
   
   // create models
-  torch::jit::script::Module tmodel_face_det = getModule("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_face_det-cuda.pt");
+  torch::jit::script::Module tmodel_face_det = getModule("/home/ajvalenc/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_face_det-cuda.pt");
 
   // read input
   //std::string directory{"/home/ajvalenc/Datasets/spectronix/thermal/fever/16bit/M337/"};
@@ -71,7 +71,8 @@ int main(int argc, char **argv) {
 
 	  // process input
 	  auto start = std::chrono::high_resolution_clock::now();
-	  cv::Mat img_prc_th = processImage(img_th);
+    double max_value_th = 30100.0;
+	  cv::Mat img_prc_th = processImage(img_th, max_value_th);
 	  torch::Tensor ts_img_th = toTensor(img_prc_th, device);
       std::vector<torch::jit::IValue> input_th = toInput(ts_img_th);
 

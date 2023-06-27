@@ -4,9 +4,9 @@
 #include <torch/torch.h>
 
 // image conversion (16bits -> 8bits)
-cv::Mat sixteenBits2EightBits(cv::Mat &image);
+cv::Mat sixteenBits2EightBits(cv::Mat &image, double max_value);
 
 // input processing block
-cv::Mat processImage(cv::Mat &image);
+cv::Mat processImage(cv::Mat &image, double max_value);
 torch::Tensor toTensor(cv::Mat &image, torch::Device device);
 std::vector<torch::jit::IValue> toInput(torch::Tensor &tensor_image);
