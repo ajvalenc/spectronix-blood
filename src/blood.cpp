@@ -2,6 +2,12 @@
 
 const double EPSILON = 1e-5;
 
+namespace dm{
+  const int num_frames = 30;
+  std::vector<int> detection_dark_his(num_frames, 0);
+  std::vector<int> detection_warm_his(num_frames, 0);
+};
+
 std::tuple<torch::Tensor,torch::Tensor,torch::Tensor> getBloodPredictions(torch::IValue &predictions){
 	
 	auto detections = predictions.toTuple()->elements().at(1).toList().get(0).toGenericDict();
@@ -65,12 +71,13 @@ double getIOU(torch::Tensor box_1, torch::Tensor box_2) {
 	return iou;
 }
 
-bool detectBlood(torch::IValue &output_th, torch::IValue &output_ir, cv::Mat &image_ir, double region_thresh, double brightness_thresh) {
+std::tuple<bool,bool> detectBlood(torch::IValue &output_th, torch::IValue &output_ir, cv::Mat &image_ir, double region_thresh, double brightness_thresh) {
 
-	bool blood = false;
+	// initialize flags
+	bool dark_liquid = false, warm_liquid = false;
 	auto [scores_th, boxes_th, labels_th] = getBloodPredictions(output_th);
 
-	if (labels_th.sizes() == 0) return blood; //early break when no thermal detection is found
+	if (labels_th.sizes() == 0) return {dark_liquid, warm_liquid}; //early break when no thermal detection is found
 	
 	auto [scores_ir, boxes_ir, labels_ir] = getBloodPredictions(output_ir);
 	for (size_t i=0; i < boxes_th.sizes()[0]; ++i) {
@@ -79,9 +86,8 @@ bool detectBlood(torch::IValue &output_th, torch::IValue &output_ir, cv::Mat &im
 		if (labels_ir.sizes() == 0) { //no liquid ir
       if (category >= 2) { //warm liquid thermal
 				double mean_patch_ir = getMeanPatch(image_ir, boxes_th[i]);
-				if (mean_patch_ir < brightness_thresh) {
-					std::cout << "\nWarm liquid detected!";
-					blood = true;
+				if (mean_patch_ir < brightness_thresh) { //dark region ir
+					warm_liquid = true;
 				}
 			}
 		}
@@ -89,15 +95,38 @@ bool detectBlood(torch::IValue &output_th, torch::IValue &output_ir, cv::Mat &im
 			for (size_t j=0; j < boxes_ir.sizes()[0]; ++j) {
 				double iou = getIOU(boxes_th[i], boxes_ir[j]);
 				if (iou >= region_thresh) {
-					std::cout << "\nDark liquid matching detected!";
-					blood = true;
+					dark_liquid = true;
 				}
 			}
 		}
 
 	}
 
-	return blood;
+	return {dark_liquid, warm_liquid};
 }
 
+void isBloodAlarm(std::tuple<bool,bool> blood, float rate) {
 
+	// extract detection results
+	bool dark_liquid = std::get<0>(blood);
+	bool warm_liquid = std::get<1>(blood);
+
+	// initialize flags
+  int threshold = int (dm::num_frames * rate / 100.0f);
+
+  // update detection history
+  dm::detection_dark_his.erase(dm::detection_dark_his.begin());
+	dm::detection_warm_his.erase(dm::detection_warm_his.begin());
+  dm::detection_dark_his.push_back(dark_liquid);
+  dm::detection_warm_his.push_back(warm_liquid);
+ 
+  // activate alarm based on detection history
+  int counter_dark = std::accumulate(dm::detection_dark_his.begin(), dm::detection_dark_his.end(), 0);
+  int counter_warm = std::accumulate(dm::detection_warm_his.begin(), dm::detection_warm_his.end(), 0);
+
+  if (counter_dark >= threshold) {
+		std::cout << "\nWARNING! **blood event** dark liquid detected";}
+	if (counter_warm >= threshold) {
+		std::cout << "\nATTENTION! **possible blood event** warm liquid detected";}
+
+}

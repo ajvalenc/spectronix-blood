@@ -36,11 +36,10 @@ int main(int argc, char **argv) {
   torch::jit::script::Module tmodel_face_det = getModule("/home/ajvalenc/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_face_det-cuda.pt");
 
   // read input
-  //std::string directory{"/home/ajvalenc/Datasets/spectronix/thermal/fever/16bit/M337/"};
-  std::string directory{"/home/ajvalenc/Datasets/spectronix/thermal/blood/8bit/Pos/"};
+  std::string directory{"/home/ajvalenc/Datasets/spectronix/thermal/fever/8bit/Test_data_Pos1/"};
 
   std::vector<cv::String> filenames;
-  cv::utils::fs::glob(directory, "", filenames, false);
+  cv::utils::fs::glob_relative(directory, "", filenames, false);
 
   // dry run 
   auto start = std::chrono::high_resolution_clock::now();
@@ -67,12 +66,12 @@ int main(int argc, char **argv) {
 	  int face_thresh = 37, forehead_thresh = 35;
 
 	  // read images
-	  cv::Mat img_th = cv::imread(filenames[i], cv::IMREAD_ANYDEPTH);
+	  cv::Mat img_th = cv::imread(directory + "/" + filenames[i], cv::IMREAD_ANYDEPTH);
+    std::cout << "\nFrame: " << i;
 
 	  // process input
 	  auto start = std::chrono::high_resolution_clock::now();
-    double max_value_th = 30100.0;
-	  cv::Mat img_prc_th = processImage(img_th, max_value_th);
+	  cv::Mat img_prc_th = processImageThermal(img_th);
 	  torch::Tensor ts_img_th = toTensor(img_prc_th, device);
       std::vector<torch::jit::IValue> input_th = toInput(ts_img_th);
 
@@ -80,9 +79,13 @@ int main(int argc, char **argv) {
 	  auto mid1 = std::chrono::high_resolution_clock::now();
 	  torch::IValue out_face_det = tmodel_face_det.forward(input_th);
 
-    // decision making
+    // process detections
     auto mid2 = std::chrono::high_resolution_clock::now();
 	  bool fever = detectFever(out_face_det, img_th, cam_id, face_thresh, forehead_thresh);
+
+    // decision making
+    float det_rate = 50.0f;
+    isFeverAlarm(fever, det_rate);
 
 	  auto end = std::chrono::high_resolution_clock::now();
     auto duration_prc = std::chrono::duration_cast<std::chrono::milliseconds>(mid1-start);
@@ -93,9 +96,9 @@ int main(int argc, char **argv) {
 	  avg_runtime_det += duration_det.count();
 	  avg_runtime_dm += duration_dm.count();
 	  avg_runtime_total += duration_total.count();
-	  std::cout << "\nFace detection:\n" << out_face_det << "\n";
-	  std::cout << "\nRuntime Processing:  " << avg_runtime_prc / (i+1.0f) << "\nRuntime detection:  " << avg_runtime_det / (i+1.0f) << "\nRuntime Decision Making:  " << avg_runtime_dm / (i+1.0f);
-	  std::cout << "\nRuntime:  " << avg_runtime_total / (i+1.0f) << " Fps: " << 1000.0f * (i+1.0f) /  avg_runtime_total << "\n";
+	  //std::cout << "\nFace detection:\n" << out_face_det << "\n";
+	  //std::cout << "\nRuntime Processing:  " << avg_runtime_prc / (i+1.0f) << "\nRuntime detection:  " << avg_runtime_det / (i+1.0f) << "\nRuntime Decision Making:  " << avg_runtime_dm / (i+1.0f);
+	  //std::cout << "\nRuntime:  " << avg_runtime_total / (i+1.0f) << " Fps: " << 1000.0f * (i+1.0f) /  avg_runtime_total << "\n";
 
 	  // display results
 	  cv::imshow("Thermal Camera", img_th);

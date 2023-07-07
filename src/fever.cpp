@@ -1,5 +1,10 @@
 #include "fever.hpp"
 
+namespace dm {
+	const int num_frames = 30;
+	std::vector<int> detection_his(num_frames, 0);
+};
+
 std::tuple<torch::Tensor,torch::Tensor,torch::Tensor> getFeverPredictions(torch::IValue &predictions){
 	
 	auto detections = predictions.toTuple()->elements().at(1).toList().get(0).toGenericDict();
@@ -105,8 +110,7 @@ bool detectFever(torch::IValue &output, cv::Mat &image, int camera_id, int face_
            	   fever = true;
            	   }
            }	
-           else if (category == 1) {
-                
+           else if (category == 1) { 
                 if (maxdiff_temp > forehead_thresh) { //treshold for the warmest region on the forehead
            	   std::cout << "Fever forehead detected! ";
            	   fever = true;
@@ -115,4 +119,22 @@ bool detectFever(torch::IValue &output, cv::Mat &image, int camera_id, int face_
         //std::cout << maxdiff_temp << "  " << meandiff_temp << "  " << patch_temp << "\n";
         }
         return fever;
+}
+
+void isFeverAlarm(bool fever, float rate) {
+
+	// initialize flags
+	int threshold = int (dm::num_frames * rate / 100.0f);
+
+	// update detection history
+	dm::detection_his.erase(dm::detection_his.begin());
+	dm::detection_his.push_back(fever);
+
+	// activate alarm based on detection history
+	int counter = std::accumulate(dm::detection_his.begin(), dm::detection_his.end(), 0);
+
+	if (counter >= threshold ) {
+			std::cout << "\nWARNING: **fever event** detected\n";
+	}
+
 }

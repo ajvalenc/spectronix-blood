@@ -17,4 +17,11 @@ std::tuple<double, double, double> getTemperature(cv::Mat &image, torch::Tensor 
 bool detectFever(torch::IValue &output, cv::Mat &image, int camera_id, int face_thresh, int forehead_thresh);
 
 
+// decision making
+namespace dm {
+  extern const int num_frames;
+  extern std::vector<int> detection_his;
+};
+
+void isFeverAlarm(bool fever, float det_rate);
 

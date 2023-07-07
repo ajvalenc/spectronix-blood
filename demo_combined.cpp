@@ -78,13 +78,11 @@ std::cout << "\nWarmuptime:  " << duration.count() << " Fps: " << 1000.0f / dura
      
     // process input
     auto start = std::chrono::high_resolution_clock::now();
-    double max_value_th = 30100.0;
-	  cv::Mat img_prc_th = processImage(img_th, max_value_th);
+	  cv::Mat img_prc_th = processImageThermal(img_th);
 	  torch::Tensor ts_img_th = toTensor(img_prc_th, device);
       std::vector<torch::jit::IValue> input_th = toInput(ts_img_th);
 
-    double max_value_ir = 395.0;
-	  cv::Mat img_prc_ir = processImage(img_ir, max_value_ir);
+	  cv::Mat img_prc_ir = processImageIR(img_ir);
 	  torch::Tensor ts_img_ir = toTensor(img_prc_ir, device);
       std::vector<torch::jit::IValue> input_ir = toInput(ts_img_ir);
 

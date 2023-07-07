@@ -17,11 +17,11 @@ def sixteen_bits2eight_bits(pixel):
     pixel = (pixel - np.min(pixel)) / (30100-np.min(pixel))
     pixel = np.rint(pixel * 255)
     return pixel.astype("uint8")
-    
+
 def visualize(image, normalize=False):
 
     if normalize:
-        image = cv2.normalize(image, None, 0, 255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U) 
+        image = cv2.normalize(image, None, 0, 255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
 
     # rescale (16-bit image only)
     if (image.dtype) == np.uint16:
@@ -29,7 +29,7 @@ def visualize(image, normalize=False):
         image = image.astype(np.uint8)
 
     #cv2.normalize(image, None, 0, 255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U) 
-    
+
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     return image
@@ -59,7 +59,7 @@ print("Detection model loaded successfully")
 #filename = "/home/ajvalenc/OneDrive - University of Ottawa/Datasets/spectronix/thermal/fever/16bit/M337/a1_M337.tiff"
 filename = "/home/ajvalenc/Datasets/spectronix/thermal/blood/16bit/s01_thermal_cloth_01_MicroCalibir_M0000334/0001.png"
 img = cv2.imread(filename,cv2.IMREAD_ANYDEPTH) #input
-    
+
 # conversion
 img = sixteen_bits2eight_bits(img)
 
