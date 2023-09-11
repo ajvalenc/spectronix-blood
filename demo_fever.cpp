@@ -36,7 +36,8 @@ int main(int argc, char **argv) {
   torch::jit::script::Module tmodel_face_det = getModule("/home/ajvalenc/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_face_det-cuda.pt");
 
   // read input
-  std::string directory{"/home/ajvalenc/Datasets/spectronix/thermal/fever/8bit/Test_data_Pos1/"};
+  //std::string directory{"/home/ajvalenc/Datasets/spectronix/thermal/fever/8bit/Test_data_Pos1/"};
+  std::string directory{"/home/ajvalenc/Datasets/spectronix/thermal/failure/"};
 
   std::vector<cv::String> filenames;
   cv::utils::fs::glob_relative(directory, "", filenames, false);

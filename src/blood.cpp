@@ -14,7 +14,7 @@ std::tuple<torch::Tensor,torch::Tensor,torch::Tensor> getBloodPredictions(torch:
 	torch::Tensor boxes = detections.at("boxes").toTensor();
 	torch::Tensor scores = detections.at("scores").toTensor();
 	torch::Tensor labels = detections.at("labels").toTensor();
-
+	
 	return {scores, boxes, labels};
 }
 
@@ -98,6 +98,27 @@ std::tuple<bool,bool> detectBlood(torch::IValue &output_th, torch::IValue &outpu
 					dark_liquid = true;
 				}
 			}
+		}
+
+	}
+
+	return {dark_liquid, warm_liquid};
+}
+
+
+std::tuple<bool,bool> detectBloodThermal(torch::IValue &output_th, double region_thresh, double brightness_thresh) {
+
+	// initialize flags
+	bool dark_liquid = false, warm_liquid = false;
+	auto [scores_th, boxes_th, labels_th] = getBloodPredictions(output_th);
+
+	if (labels_th.sizes() == 0) return {dark_liquid, warm_liquid}; //early break when no thermal detection is found
+	
+	for (size_t i=0; i < boxes_th.sizes()[0]; ++i) {
+
+		int category = labels_th[i].item<int>();
+    if (category >= 2) { //warm liquid thermal
+					warm_liquid = true;
 		}
 
 	}

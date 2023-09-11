@@ -12,6 +12,7 @@
 #include "utils.hpp"
 #include "blood.hpp"
 
+
 torch::Device device(torch::kCUDA);
 
 torch::jit::script::Module getModule(const char *file_path) {
@@ -37,8 +38,11 @@ int main(int argc, char **argv) {
   torch::jit::script::Module tmodel_blood_det_ir = getModule("/home/ajvalenc/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_ir-cuda.pt");
 
   // read input
-  std::string directory_th{"/home/ajvalenc/Datasets/spectronix/thermal/blood/8bit/s21_thermal_cloth_01_MicroCalibir_M0000334/"};
-   std::string directory_ir{"/home/ajvalenc/Datasets/spectronix/ir/blood/8bit/s21_thermal_cloth_01_000028493212_ir/"};
+  //std::string directory_th{"/home/ajvalenc/Datasets/spectronix/thermal/blood/8bit/s21_thermal_cloth_01_MicroCalibir_M0000334/"};
+   //std::string directory_ir{"/home/ajvalenc/Datasets/spectronix/ir/blood/8bit/s21_thermal_cloth_01_000028493212_ir/"};
+  std::string directory_th{"/home/ajvalenc/Datasets/spectronix/thermal/failure/"};
+  std::string directory_ir{"/home/ajvalenc/Datasets/spectronix/ir/failure/"};
+
 
   std::vector<cv::String> filenames;
   cv::utils::fs::glob_relative(directory_ir, "", filenames, false); //ir has less entries
@@ -66,7 +70,8 @@ std::cout << "\nWarmuptime:  " << duration.count() << " Fps: " << 1000.0f / dura
 
 	  // set camera
 	  int cam_id = 337;
-	  double iou_thresh = 0.5, detectable_blood_thresh = 100;
+	  double iou_thresh = 0.5;
+    double detectable_blood_thresh = 100;
 	
 	  // read images
 	  cv::Mat img_th = cv::imread(directory_th + "/" + filenames[i], cv::IMREAD_ANYDEPTH);
@@ -77,11 +82,11 @@ std::cout << "\nWarmuptime:  " << duration.count() << " Fps: " << 1000.0f / dura
     auto start = std::chrono::high_resolution_clock::now();
 	  cv::Mat img_prc_th = processImageThermal(img_th);
 	  torch::Tensor ts_img_th = toTensor(img_prc_th, device);
-      std::vector<torch::jit::IValue> input_th = toInput(ts_img_th);
+    std::vector<torch::jit::IValue> input_th = toInput(ts_img_th);
 
 	  cv::Mat img_prc_ir = processImageIR(img_ir);
 	  torch::Tensor ts_img_ir = toTensor(img_prc_ir, device);
-      std::vector<torch::jit::IValue> input_ir = toInput(ts_img_ir);
+    std::vector<torch::jit::IValue> input_ir = toInput(ts_img_ir);
 
 	  // inference
     auto mid1 = std::chrono::high_resolution_clock::now();
@@ -91,6 +96,7 @@ std::cout << "\nWarmuptime:  " << duration.count() << " Fps: " << 1000.0f / dura
     // process detections
     auto mid2 = std::chrono::high_resolution_clock::now();
 	  auto blood = detectBlood(out_blood_det_th, out_blood_det_ir, img_ir, iou_thresh, detectable_blood_thresh);
+    //auto blood = detectBloodThermal(out_blood_det_th, iou_thresh, detectable_blood_thresh);
 
     // decision making
     float det_rate = 50.0f;
@@ -106,11 +112,17 @@ std::cout << "\nWarmuptime:  " << duration.count() << " Fps: " << 1000.0f / dura
     avg_runtime_det += duration_det.count();
     avg_runtime_dm += duration_dm.count();
     avg_runtime_total += duration_total.count();
-	  //std::cout << "\nThermal: " << out_blood_det_th;
-	  //std::cout << "\nIR: " << out_blood_det_ir;
 	  //std::cout << "\nRuntime Processing:  " << avg_runtime_prc / (i+1.0f) << "\nRuntime detection:  " << avg_runtime_det / (i+1.0f) << "\nRuntime Decision Making:  " << avg_runtime_dm / (i+1.0f);
 	  //std::cout << "\nRuntime:  " << avg_runtime_total / (i+1.0f) << " Fps: " << 1000.0f * (i+1.0f) /  avg_runtime_total << "\n";
+   
     
+    bool blood_th = std::get<0> (blood);
+    bool blood_ir = std::get<1> (blood);
+    if (blood_th || blood_ir){
+      std::cout << "\nThermal: " << out_blood_det_th;
+      std::cout << "\nIR: " << out_blood_det_ir;
+    }
+
 	  // display images
 	  cv::imshow("Ir Camera", img_prc_ir);
     cv::imshow("Thermal Camera", img_prc_th);
