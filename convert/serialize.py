@@ -17,9 +17,9 @@ parser.add_argument("--weights_blood_cls", type=str, default="/home/ajvalenc/Pro
 parser.add_argument("--weights_blood_det_th", type=str, default="/home/ajvalenc/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Blood_Detection_Yolov5_th.pt")
 parser.add_argument("--weights_blood_det_ir", type=str, default="/home/ajvalenc/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Blood_Detection_Yolov5_ir.pt")
 parser.add_argument("--weights_face_det", type=str, default="/home/ajvalenc/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Face_Detection_Yolov5.pt")
-parser.add_argument("--score_thresh_blood_th",  type=float, default=0.55) #0.4
+parser.add_argument("--score_thresh_blood_th",  type=float, default=0.4) #0.4
 parser.add_argument("--nms_thresh_blood_th", type=float, default=0.5)
-parser.add_argument("--score_thresh_blood_ir",  type=float, default=0.55) #0.4
+parser.add_argument("--score_thresh_blood_ir",  type=float, default=0.4) #0.4
 parser.add_argument("--nms_thresh_blood_ir", type=float, default=0.5)
 parser.add_argument("--score_thresh_face",  type=float, default=0.3) #0.3 
 parser.add_argument("--nms_thresh_face",  type=float, default=0.4) 
