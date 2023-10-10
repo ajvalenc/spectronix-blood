@@ -12,14 +12,17 @@ from torchvision.models import resnet101
 
 from yolort.models import YOLO
 
+# parse arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("--weights_det_th", type=str, default="/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/pytorch/Detection_Yolov5s_th.pt")
-parser.add_argument("--score_thresh",  type=float, default=0.2) 
+parser.add_argument("--weights_det_th", type=str, default="../weights/pytorch/Detection_Yolov5s_th.pt")
+parser.add_argument("--score_thresh",  type=float, default=0.3) 
 parser.add_argument("--nms_thresh",  type=float, default=0.4) 
 args = parser.parse_args()
 
-# configuration
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+# configuration
+ROOT = dirname(realpath(__file__))
 
 # Object detection
 # Combined thermal detections blood/face
@@ -28,7 +31,7 @@ model_det_th.eval()
 model_det_th = model_det_th.to(device)
 
 tmodel_det_th = torch.jit.script(model_det_th)
-tmodel_det_th.save("/home/ajvalenc/OneDrive - University of Ottawa/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_det_th-{}.pt".format(device).replace(":0",""))
+tmodel_det_th.save("../weights/torchscript/traced_det_th-{}.pt".format(device).replace(":0",""))
 
 # print blood_det number of parameters
 print("Combined Detection Model Parameters: {}".format(sum(p.numel() for p in model_det_th.parameters() if p.requires_grad)))
