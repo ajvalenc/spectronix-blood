@@ -1,27 +1,69 @@
-# Real-Time Blood and Fever Detection Models
+# Real-Time Blood and Fever Detection
 
-## Model
-The detection models are based on Ultralytics YOLOv5(see python scripts to adjust input parameters).
+## Models
+The detection models are based on Ultralytics YOLOv5. These models can be adjusted with additional arguments using the Python scripts provided in `python/` directory. The `src` contains the C++ code for real-time inference and decision making system.
 
-Train: Fine tuning YOLOv5 model with custom dataset (retrains using Yolov5s weights by default).
-
-```bash
-python train.py --source=path/to/data/images
-```
-
-Detect: Inference YOLOv5 model with retrained weights on test image data.
+### Training
+To train the YOLOv5 model with custom dataset, run the following command:
 
 ```bash
-python detect.py --source=path/to/data/images --weights=path/to/weights
+python python/train.py --source=path/to/data/images --weights=path/to/weights --epochs=100 --batch-size=16
 ```
 
-Serialize: Convert native PyTorch weights to torchscript serialized `.pt` files.
+- `--source`: Specifies the path to the directory containing the training images. If not provided, the script will attempt to retrieve the data from Roboflow.
+- `--weights`: Specifies the path to the pre-trained weights file. If not provided, it will use the default `yolov5s.pt` pre-trained weights.
+- `--epochs`: Specifies the number of training epochs to run (default is 300).
+- `--batch-size`: Specifies the batch size to use during training (default is 16).
+
+### Inference
+
+### On Python
+To perform inference on test images using the retrained YOLOv5 model, run the following command:
 
 ```bash
-python serialize.py
+python python/detect.py --source=path/to/data/images --weights=path/to/weights --conf-thres=0.5 --iou-thres=0.4
+```
+- `--source`: Specifies the path to the directory containing the test images. If not provided, the script will attempt to retrieve the data from Roboflow.
+- `--weights`: Specifies the path to the retrained weights file. If not provided, it will use the default Yolov5.pt pre-trained weights.
+- `--conf-thres`: Specifies the confidence threshold for object detection (default is 0.5).
+- `--iou-thres`: Specifies the Non-Maximum Suppression IoU threshold for object detection (default is 0.4).
+
+### On C++
+Once the project is build, the executables can be found in `build/` directory. The weights files must be placed in `weights/torchscript/` directory. To perform real-time inference on test images using detection models, run the following command:
+
+```bash
+./demo_fever --source path/to/data/images
+```
+- `--source`: Specifies the path to the directory containing the test images.
+- `traced_face_det.pt`: Face detection torchscript weights file.
+
+```bash
+./demo_blood --source_th path/to/data/images_th --source_ir path/to/data/images_ir
+```
+- `--source_th`: Specifies the path to the directory containing the test images from thermal camera.
+- `--source_ir`: Specifies the path to the directory containing the test images from IR camera.
+- `traced_blood_det_th.pt`: Blood detection torchscript weights file for thermal images.
+- `traced_blood_det_ir.pt`: Blood detection torchscript weights file for IR images.
+
+### Serialization
+To convert the native PyTorch weights to torchscript format, run the following command:
+
+```bash
+python python/serialize.py
 ```
 
-## Data
+- `--weights-blood-cls`: Specifies the path to the retrained weights file for blood classification model. If not provided, it will use the default `resnet101_blood_cls.pt` pre-trained weights.
+- `--weights-blood-det-th`: Specifies the path to the retrained weights file for blood detection model in thermal images. If not provided, it will use the default `yolov5_blood_det_th.pt` pre-trained weights.
+- `--weights-blood-det-ir`: Specifies the path to the retrained weights file for blood detection model in IR images. If not provided, it will use the default `yolov5_blood_det_ir.pt` pre-trained weights.
+- `--weights-face-det`: Specifies the path to the retrained weights file for face detection model. If not provided, it will use the default `yolov5_face_det.pt` pre-trained weights.
+- `conf-thres-blood-th`: Specifies the confidence threshold for blood detection in thermal images (default is 0.4).
+- `iou-thres-blood-th`: Specifies the Non-Maximum Suppression IoU threshold for blood detection in thermal images (default is 0.5).
+- `conf-thres-blood-ir`: Specifies the confidence threshold for blood detection in IR images (default is 0.4).
+- `iou-thres-blood-ir`: Specifies the Non-Maximum Suppression IoU threshold for blood detection in IR images (default is 0.5).
+- `conf-thres-face`: Specifies the confidence threshold for face detection (default is 0.3).
+- `iou-thres-face`: Specifies the Non-Maximum Suppression IoU threshold for face detection (default is 0.5).
+
+## Datasets
 ### Raw Sensors
 
 Cloud service [WD MyCloud](https://os5.mycloud.com/) is used to store images from the multiple cameras. 
@@ -33,6 +75,7 @@ The labeled data for the detection models are generated using [Roboflow](https:/
 
 
 ## Build Instructions
+The following instructions are used to build the `src/` files into an executable. The project can be built using the provided `CMakeLists.txt` file. The following dependencies are required:
 
 ### Local Install
 

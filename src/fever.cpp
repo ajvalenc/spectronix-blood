@@ -6,7 +6,7 @@ namespace dm {
 };
 
 std::tuple<torch::Tensor,torch::Tensor,torch::Tensor> getFeverPredictions(torch::IValue &predictions){
-	
+	// Extract detection results from the model output	
 	auto detections = predictions.toTuple()->elements().at(1).toList().get(0).toGenericDict();
 	torch::Tensor boxes = detections.at("boxes").toTensor();
 	torch::Tensor scores = detections.at("scores").toTensor();
@@ -25,7 +25,8 @@ double transferFunction(double &radiometry, int camera_id, bool is_linear) {
 			a = 0.5548024811500611;
     		b = -8.931341192663892e-06;
     		c = -8562.309528172134;
-
+			
+			// Calculate temperature from radiometry
 	    	T = (a * radiometry) + (b * (radiometry * radiometry)) + c;
 		}
 	}
@@ -38,6 +39,7 @@ double transferFunction(double &radiometry, int camera_id, bool is_linear) {
     		b = -7.968154638301412e-06;
     		c = -7579.7939226811395;
 
+			// Calculate temperature from radiometry
     		T = (a * radiometry) + (b * (radiometry * radiometry)) + c;
 		}
 	}
@@ -49,7 +51,7 @@ std::tuple<double, double, double> getTemperature(cv::Mat &image, torch::Tensor 
 	float reference_temperature;
 	cv::Rect reference_region;
 	
-	// differential temperature
+	// Define reference region for temperature calculation
 	if (camera_id == 337) {
 		reference_temperature = 21.5;
 		reference_region = cv::Rect{600,40,15,15};
@@ -59,20 +61,20 @@ std::tuple<double, double, double> getTemperature(cv::Mat &image, torch::Tensor 
 		reference_region = cv::Rect{400,50,10,10};
 	}
 
-	// extract region points
+	// Extract coordinates of the bounding box
 	float left = box[0].item().toFloat();
 	float top = box[1].item().toFloat();
 	float right = box[2].item().toFloat();
 	float bottom = box[3].item().toFloat();
 
-	// define region of interest
+	// Define region of interest in the image
 	cv::Rect detect_region(left, top, (right-left), (bottom-top));
 	
-	// crop image and patch
+	// Crop the region from the image
 	cv::Mat detect_patch= image(detect_region);
 	cv::Mat reference_patch = image(reference_region);
 
-	// get radiometry stats
+	// Compute radiometry stats
 	double max_radiometry_detect, mean_radiometry_detect, mean_radiometry_reference;
 
 	cv::minMaxIdx(detect_patch, NULL, &max_radiometry_detect);
@@ -81,13 +83,13 @@ std::tuple<double, double, double> getTemperature(cv::Mat &image, torch::Tensor 
 	cv::Scalar u2_dim = cv::mean(reference_patch);
 	mean_radiometry_reference = u2_dim.val[0];
 
-	// compute temperature stats
+	// Compute temperature stats
 	double max_temperature, mean_temperature, patch_temperature;
 	max_temperature = transferFunction(max_radiometry_detect, camera_id, false);
 	mean_temperature = transferFunction(mean_radiometry_detect, camera_id, false);
 	patch_temperature = transferFunction(mean_radiometry_reference, camera_id, true);
 
-	// compute differential temperature
+	// Compute differential temperature
 	double maxdiff_temperature = max_temperature - patch_temperature + reference_temperature;
 	double meandiff_temperature = mean_temperature - patch_temperature + reference_temperature;
 
@@ -99,19 +101,20 @@ bool detectFever(torch::IValue &output, cv::Mat &image, int camera_id, int face_
 	bool fever = false;
 	auto [scores, boxes, labels] = getFeverPredictions(output);
 
-	if (labels.sizes() == 0) return fever; //early break when no detection is found
+	// Early break when no face or forehead is found
+	if (labels.sizes() == 0) return fever;
 	
 	for (size_t i =0; i < boxes.sizes()[0]; ++i) {
            auto [maxdiff_temp, meandiff_temp, patch_temp] = getTemperature(image, boxes[i], camera_id);
            int category = labels[i].item<int>();
            if (category == 0) {
-           	if (maxdiff_temp > face_thresh) { //treshold for the warmest region on the face
+           	if (maxdiff_temp > face_thresh) { // Threshold for the warmest region on the face
            	   std::cout << "Fever face detected! ";
            	   fever = true;
            	   }
            }	
            else if (category == 1) { 
-                if (maxdiff_temp > forehead_thresh) { //treshold for the warmest region on the forehead
+                if (maxdiff_temp > forehead_thresh) { // Threshold for the warmest region on the forehead
            	   std::cout << "Fever forehead detected! ";
            	   fever = true;
            		}
@@ -123,16 +126,16 @@ bool detectFever(torch::IValue &output, cv::Mat &image, int camera_id, int face_
 
 void isFeverAlarm(bool fever, float rate) {
 
-	// initialize flags
 	int threshold = int (dm::num_frames * rate / 100.0f);
 
-	// update detection history
+	// Update detection history
 	dm::detection_his.erase(dm::detection_his.begin());
 	dm::detection_his.push_back(fever);
 
-	// activate alarm based on detection history
+	// Calculate the number of detections in the history
 	int counter = std::accumulate(dm::detection_his.begin(), dm::detection_his.end(), 0);
 
+	// Activate alarm based on detection history
 	if (counter >= threshold ) {
 			std::cout << "\nWARNING: **fever event** detected\n";
 	}

@@ -7,73 +7,96 @@ import torch
 from yolov5 import detect
 from yolort.models.yolo import YOLO
 
-# parse arguments
+from roboflow import Roboflow
+
+# Parse command-line arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("--source", type=str, default="../data/images", help="file/dir/URL/glob")
-parser.add_argument("--project", type=str, default="../output/runs/detect", help="save results to project/name")
+parser.add_argument("--source", type=str, default="", help="file/dir/URL/glob")
 parser.add_argument("--weights", type=str, default="", help="model.pt path(s) leave blank to use original pretrained weights")
+parser.add_argument("--project", type=str, default="../output/runs", help="save results to project/name")
 parser.add_argument("--conf-thres", type=float, default=0.5, help="confidence threshold")
-parser.add_argument("--iou-thres", type=float, default=0.4, help="NMS IOU threshold")
-parser.add_argument("--yolort", action="store_true", help="use yolort model otherwise use yolov5 model")
-parser.add_argument("--model", type=str, default="yolov5", help="yolo model name")
+parser.add_argument("--iou-thres", type=float, default=0.4, help="Non-Maximum Suppression IOU threshold")
+parser.add_argument("--yolort", action="store_true", help="use yolort model otherwise use standard yolov5 model")
+parser.add_argument("--api-key", type=str, default="fI0NwCgOFaNOoDDHvDbs", help="Roboflow API key")
+parser.add_argument("--username", type=str, default="uospec-pya0l", help="Roboflow username")
+parser.add_argument("--project-id", type=str, default="thermal_face_forehead", help="Roboflow project ID")
+parser.add_argument("--num-version", type=int, default=4, help="Roboflow project number version")
+parser.add_argument("--annotation-format", type=str, default="yolov5", help="Roboflow export annotation format")
 args = parser.parse_args()
 
+# Determine if CUDA (GPU) is available
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 use_cuda = False if str(device) == "cpu" else True
 
-# directory configuration
+# Directory configuration
 ROOT = dirname(realpath(__file__))
-dir_weights = join(ROOT, args.weights)
-if not os.path.isfile(dir_weights):
-    dir_weights = args.model + "s.pt"
-    print("Error: weights file does not exist. Using default weights " + dir_weights)
+fn_weights = args.weights # Path where weights are saved
+if not os.path.isfile(fn_weights): # Download default pre-trained weights if not exist locally
+    dir_weights = join(ROOT, "../weights/pytorch")
+    if not os.path.isdir(dir_weights):
+        os.makedirs(dir_weights, exist_ok=True)
+    fn_weights = join(dir_weights, "yolov5s.pt")
+    print("Warning: Weights file does not exist. Using default pre-trained weights: ", fn_weights)
 
-dir_source = join(ROOT, args.source)
+dir_source = args.source # Path where source images are saved
 if not os.path.isdir(dir_source):
-    print("Error: source directory does not exist")
-    exit()
+    print("Warning: Source directory does not exist. Attempting to download from Roboflow.")
 
-dir_project = join(ROOT, args.project)
+    # Initialize the Roboflow API client with your API key
+    rf = Roboflow(api_key=args.api_key)
+
+    # Access your Roboflow workspace and project
+    project = rf.workspace(args.username).project(args.project_id)
+
+    # Access the desired model version
+    model = project.version(args.num_version).model
+
+    # Download the dataset locally
+    os.environ["DATASET_DIRECTORY"] = join(os.path.expanduser("~"), "Downloads/content", args.annotation_format)  # Path where dataset is saved
+    dataset = project.version(args.num_version).download(args.annotation_format)
+    dir_source = join(dataset.location, "test/images")
+
+dir_project = join(ROOT, args.project) # Path where results are saved
 os.makedirs(dir_project, exist_ok=True)
 
-# inference
+# Inference
 if not args.yolort:
-    detect.run(weights=dir_weights,  # model.pt path(s)
-            source=dir_source,  # file/dir/URL/glob, 0 for webcam
-            imgsz=640,  # inference size (pixels)
-            conf_thres=args.conf_thres,  # confidence threshold
-            iou_thres=args.iou_thres,  # NMS IOU threshold
-            max_det=1000,  # maximum detections per image
-            device=device,  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-            view_img=False,  # show results
-            save_txt=True,  # save results to *.txt
-            save_conf=True,  # save confidences in --save-txt labels
-            save_crop=False,  # save cropped prediction boxes
-            nosave=False,  # do not save images/videos
-            classes=None,  # filter by class: --class 0, or --class 0 2 3
-            agnostic_nms=False,  # class-agnostic NMS
-            augment=False,  # augmented inference
-            visualize=False,  # visualize features
-            update=False,  # update all models
-            project=dir_project,  # save results to project/name
+    # Using YOLOv5 for inference
+    detect.run(weights=fn_weights,  # Model.pt path(s)
+            source=dir_source,  # File/dir/URL/glob, 0 for webcam
+            imgsz=640,  # Inference size (pixels)
+            conf_thres=args.conf_thres,  # Confidence threshold
+            iou_thres=args.iou_thres,  # Non-maximum suppression IOU threshold
+            max_det=1000,  # Maximum detections per image
+            device=device,  # CUDA device, i.e. 0 or 0,1,2,3 or cpu
+            view_img=False,  # Show results
+            save_txt=True,  # Save results to *.txt
+            save_conf=True,  # Save confidences in --save-txt labels
+            save_crop=False,  # Save cropped prediction boxes
+            nosave=False,  # Do not save images/videos
+            classes=None,  # Filter by class: --class 0, or --class 0 2 3
+            agnostic_nms=False,  # Class-agnostic Non-Maximum Suppression
+            augment=False,  # Augmented inference
+            visualize=False,  # Visualize features
+            update=False,  # Update all models
+            project=dir_project,  # Save results to project/name
             )
 else:
+    # Using YOLORT for inference
     model = YOLO.load_from_yolov5(args.weights, args.conf_thres, args.iou_thres)
     model = model.eval()
     model = model.to(device)
 
+    # Loop through the images, make predictions, and print the results
     filenames = sorted(os.listdir(dir_source))
-
     for filename in filenames:
-        # input data and transform (using opencv)
-        img_raw = cv2.imread(join(dir_source, filename))
-        img = img_raw.copy()
+        
+        img = cv2.imread(join(dir_source, filename))
 
-        img = torch.as_tensor(img.astype("float32").transpose(2,0,1)).to(device)
+        img = torch.as_tensor(img.astype("float32").transpose(2,0,1)).to(device)  # Prepare image for model input
         img /= 255.
         img = img.unsqueeze(0)
 
-        # process outputs
         with torch.no_grad():
             out = model(img)
             print(out)

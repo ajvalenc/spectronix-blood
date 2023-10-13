@@ -9,7 +9,7 @@ namespace dm{
 };
 
 std::tuple<torch::Tensor,torch::Tensor,torch::Tensor> getBloodPredictions(torch::IValue &predictions){
-	
+	// Extract detection results from the model output	
 	auto detections = predictions.toTuple()->elements().at(1).toList().get(0).toGenericDict();
 	torch::Tensor boxes = detections.at("boxes").toTensor();
 	torch::Tensor scores = detections.at("scores").toTensor();
@@ -20,19 +20,19 @@ std::tuple<torch::Tensor,torch::Tensor,torch::Tensor> getBloodPredictions(torch:
 
 double getMeanPatch(cv::Mat &image, torch::Tensor box) {
 
-	// extract region points
+	// Extract coordinates of the bounding box
 	float left = box[0].item().toFloat();
 	float top = box[1].item().toFloat();
 	float right = box[2].item().toFloat();
 	float bottom = box[3].item().toFloat();
 
-	// define region of interest
+	// Define region of interest in the image
 	cv::Rect region(left, top, (right - left), (bottom - top));
 	
-	// crop patch
+	// Crop the region from the image
 	cv::Mat detect_patch= image(region);
 
-	// get mean patch
+	// Calculate the mean pixel value of the region
     cv::Scalar mean_patch = cv::mean(detect_patch);
 
 	return mean_patch.val[0];
@@ -40,7 +40,7 @@ double getMeanPatch(cv::Mat &image, torch::Tensor box) {
 
 double getIOU(torch::Tensor box_1, torch::Tensor box_2) {
 
-	// extract region points
+	// Extract region points
 	float left_1 = box_1[0].item().toFloat();
 	float top_1 = box_1[1].item().toFloat();
 	float right_1 = box_1[2].item().toFloat();
@@ -51,16 +51,16 @@ double getIOU(torch::Tensor box_1, torch::Tensor box_2) {
 	float right_2 = box_2[2].item().toFloat();
 	float bottom_2 = box_2[3].item().toFloat();
 
-	// intersection coordinates
+	// Calculate the intersection coordinates
 	float left = std::max(left_1, left_2);
 	float top = std::max(top_1, top_2);
     float right = std::min(right_1, right_2);
     float bottom = std::min(bottom_1, bottom_2);
 
-	// overlapped area
+	// Calculate the overlapped area
 	float overlap_area = std::max((right - left), 0.0f) * std::max((bottom - top), 0.0f);
 
-	// no overlapped case
+	// Handle the case of no overlap
 	float area_1 = (right_1 - left_1) * (bottom_1 - top_1);
 	float area_2 = (right_2 - left_2) * (bottom_2 - top_2);
 
@@ -73,25 +73,26 @@ double getIOU(torch::Tensor box_1, torch::Tensor box_2) {
 
 std::tuple<bool,bool> detectBlood(torch::IValue &output_th, torch::IValue &output_ir, cv::Mat &image_ir, double region_thresh, double brightness_thresh) {
 
-	// initialize flags
+	// Initialize dark and warm liquid flags
 	bool dark_liquid = false, warm_liquid = false;
 	auto [scores_th, boxes_th, labels_th] = getBloodPredictions(output_th);
 
-	if (labels_th.sizes() == 0) return {dark_liquid, warm_liquid}; //early break when no thermal detection is found
+	// Early break when no thermal detection is found
+	if (labels_th.sizes() == 0) return {dark_liquid, warm_liquid};
 	
 	auto [scores_ir, boxes_ir, labels_ir] = getBloodPredictions(output_ir);
 	for (size_t i=0; i < boxes_th.sizes()[0]; ++i) {
 
 		int category = labels_th[i].item<int>();
-		if (labels_ir.sizes() == 0) { //no liquid ir
-      if (category >= 2) { //warm liquid thermal
+		if (labels_ir.sizes() == 0) { // No liquid in ir detected
+      if (category >= 2) { // Warm liquid detected in thermal
 				double mean_patch_ir = getMeanPatch(image_ir, boxes_th[i]);
-				if (mean_patch_ir < brightness_thresh) { //dark region ir
+				if (mean_patch_ir < brightness_thresh) { // Dark region in ir
 					warm_liquid = true;
 				}
 			}
 		}
-		else { //dark liquid ir
+		else { // Dark liquid detected in ir
 			for (size_t j=0; j < boxes_ir.sizes()[0]; ++j) {
 				double iou = getIOU(boxes_th[i], boxes_ir[j]);
 				if (iou >= region_thresh) {
@@ -108,46 +109,46 @@ std::tuple<bool,bool> detectBlood(torch::IValue &output_th, torch::IValue &outpu
 
 std::tuple<bool,bool> detectBloodThermal(torch::IValue &output_th, double region_thresh, double brightness_thresh) {
 
-	// initialize flags
+	// Initialize dark and warm liquid flags
 	bool dark_liquid = false, warm_liquid = false;
 	auto [scores_th, boxes_th, labels_th] = getBloodPredictions(output_th);
 
-	if (labels_th.sizes() == 0) return {dark_liquid, warm_liquid}; //early break when no thermal detection is found
+	// Early break when no thermal detection is found
+	if (labels_th.sizes() == 0) return {dark_liquid, warm_liquid};
 	
 	for (size_t i=0; i < boxes_th.sizes()[0]; ++i) {
 
 		int category = labels_th[i].item<int>();
-    if (category >= 2) { //warm liquid thermal
+    if (category >= 2) { // Warm liquid detected in thermal
 					warm_liquid = true;
 		}
 
 	}
-
 	return {dark_liquid, warm_liquid};
 }
 
-void isBloodAlarm(std::tuple<bool,bool> blood, float rate) {
 
-	// extract detection results
+void isBloodAlarm(std::tuple<bool,bool> blood, float rate) {
+	// Extract detection results
 	bool dark_liquid = std::get<0>(blood);
 	bool warm_liquid = std::get<1>(blood);
 
-	// initialize flags
-  int threshold = int (dm::num_frames * rate / 100.0f);
+	// Calculate threshold based on the rate
+  	int threshold = int (dm::num_frames * rate / 100.0f);
 
-  // update detection history
-  dm::detection_dark_his.erase(dm::detection_dark_his.begin());
+  	// Update detection history
+  	dm::detection_dark_his.erase(dm::detection_dark_his.begin());
 	dm::detection_warm_his.erase(dm::detection_warm_his.begin());
-  dm::detection_dark_his.push_back(dark_liquid);
-  dm::detection_warm_his.push_back(warm_liquid);
+  	dm::detection_dark_his.push_back(dark_liquid);
+  	dm::detection_warm_his.push_back(warm_liquid);
  
-  // activate alarm based on detection history
-  int counter_dark = std::accumulate(dm::detection_dark_his.begin(), dm::detection_dark_his.end(), 0);
-  int counter_warm = std::accumulate(dm::detection_warm_his.begin(), dm::detection_warm_his.end(), 0);
+  	// Calculate the number of detections in the history
+  	int counter_dark = std::accumulate(dm::detection_dark_his.begin(), dm::detection_dark_his.end(), 0);
+  	int counter_warm = std::accumulate(dm::detection_warm_his.begin(), dm::detection_warm_his.end(), 0);
 
-  if (counter_dark >= threshold) {
+	// Activate alarm when the threshold is reached
+  	if (counter_dark >= threshold) {
 		std::cout << "\nWARNING! **blood event** dark liquid detected";}
 	if (counter_warm >= threshold) {
 		std::cout << "\nATTENTION! **possible blood event** warm liquid detected";}
-
 }

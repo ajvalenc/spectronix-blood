@@ -34,23 +34,35 @@ torch::jit::script::Module getModule(const char *file_path) {
 int main(int argc, char **argv) {
   
   // create models
-  torch::jit::script::Module tmodel_det_th = getModule("/home/ajvalenc/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_det_th-cuda.pt");
-  torch::jit::script::Module tmodel_det_ir = getModule("/home/ajvalenc/Projects/spectronix/detection_models/blood_fever/weights/torchscript/traced_blood_det_ir-cuda.pt");
+  torch::jit::script::Module tmodel_det_th = getModule("../weights/torchscript/traced_det_th-cuda.pt");
+  torch::jit::script::Module tmodel_det_ir = getModule("../weights/torchscript/traced_blood_det_ir-cuda.pt");
 
+  // Initialize variables
+  std::string directory_th;
+  std::string directory_ir;
 
-  // read input
-  std::string directory_th{"/home/ajvalenc/Datasets/spectronix/thermal/blood/16bit/s21_thermal_cloth_01_MicroCalibir_M0000334/"};
-  std::string directory_ir{"/home/ajvalenc/Datasets/spectronix/ir/blood/registered/s21_thermal_cloth_01_000028493212_ir/"};
+  if (argc != 5) {
+      std::cerr << "Usage: " << argv[0] << " --source_th <directory_path_thermal> --source_ir <directory_path_ir" << std::endl;
+      return 1;
+  }
+  if (std::string(argv[1]) == "--source_th" && std::string(argv[3]) == "--source_ir") {
+      directory_th = argv[2];
+      directory_ir = argv[4];
+  } else {
+      std::cerr << "Usage: " << argv[0] << " --source_th <directory_path> --source_ir <directory_path_ir" << std::endl;
+      return 1;
+  }
 
+  // Read input
   std::vector<cv::String> filenames;
-  cv::utils::fs::glob_relative(directory_ir, "", filenames, false); //ir has less entries
+  cv::utils::fs::glob_relative(directory_ir, "", filenames, false); // IR has less entries
 
-  // dry run 
+  // Dry run to warm up
   auto start = std::chrono::high_resolution_clock::now();
   std::vector<torch::jit::IValue> input;
   auto img_rand = torch::rand({1,3,640,480}).to(device);
   input.push_back(img_rand);
-  torch::NoGradGuard no_grad; // ensure autograd is off
+  torch::NoGradGuard no_grad; // Ensure autograd is off
   for (size_t i = 0; i < 3; ++i){
 	  tmodel_det_th.forward(input);
 	  tmodel_det_ir.forward(input);
@@ -66,17 +78,17 @@ std::cout << "\nWarmuptime:  " << duration.count() << " Fps: " << 1000.0f / dura
   float avg_runtime_total = 0.0f;
   while (i < filenames.size()) {
 
-	  // set camera
+	  // Set camera parameters
 	  int cam_id = 337;
     int face_thresh = 37, forehead_thresh = 35;
 	  double iou_thresh = 0.2, detectable_blood_thresh = 100;
 	
-	  // read images
+	  // Read each images
 	  cv::Mat img_th = cv::imread(directory_th + "/" + filenames[i], cv::IMREAD_ANYDEPTH);
 	  cv::Mat img_ir = cv::imread(directory_ir + "/" + filenames[i], cv::IMREAD_ANYDEPTH);
      std::cout << "\nDetection - frame " << i;
      
-    // process input
+    // Process input
     auto start = std::chrono::high_resolution_clock::now();
 	  cv::Mat img_prc_th = processImageThermal(img_th);
 	  torch::Tensor ts_img_th = toTensor(img_prc_th, device);
@@ -86,17 +98,17 @@ std::cout << "\nWarmuptime:  " << duration.count() << " Fps: " << 1000.0f / dura
 	  torch::Tensor ts_img_ir = toTensor(img_prc_ir, device);
       std::vector<torch::jit::IValue> input_ir = toInput(ts_img_ir);
 
-    // inference
+    // Inference
     auto mid1 = std::chrono::high_resolution_clock::now();
 	  torch::IValue out_det_th = tmodel_det_th.forward(input_th);
 	  torch::IValue out_det_ir = tmodel_det_ir.forward(input_ir);
     
-    // decision making
+    // Decision making module
     auto mid2 = std::chrono::high_resolution_clock::now();
     bool fever = detectFever(out_det_th, img_th, cam_id, face_thresh, forehead_thresh);
 	  bool blood = detectBlood(out_det_th, out_det_ir, img_ir, iou_thresh, detectable_blood_thresh);
 
-	  // display results
+	  // Display results
 	  auto end = std::chrono::high_resolution_clock::now();
     auto duration_prc = std::chrono::duration_cast<std::chrono::milliseconds>(mid1-start);
     auto duration_det = std::chrono::duration_cast<std::chrono::milliseconds>(mid2-mid1);
