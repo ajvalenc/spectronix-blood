@@ -51,7 +51,7 @@ if not os.path.isdir(dir_source):
 
     # Download the dataset locally
     os.environ["DATASET_DIRECTORY"] = join(os.path.expanduser("~"), "Downloads/content", args.annotation_format)  # Path where dataset is saved
-    dataset = project.version(args.num_version).download(args.annotation_format)
+    dataset = project.version(args.num_version).download(args.annotation_format) #NOTE augmentation may be applied, check the dataset online to see what augmentation techniques are applied
     dir_source = dataset.location
     
 # Training
