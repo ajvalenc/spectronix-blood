@@ -88,6 +88,7 @@ std::tuple<bool,bool> detectBlood(torch::IValue &output_th, torch::IValue &outpu
       if (category >= 2) { // Warm liquid detected in thermal
 				double mean_patch_ir = getMeanPatch(image_ir, boxes_th[i]);
 				if (mean_patch_ir < brightness_thresh) { // Dark region in ir
+					std::cout << "\nMean patch: " << mean_patch_ir;
 					warm_liquid = true;
 				}
 			}

@@ -18,7 +18,7 @@ parser.add_argument("--batch-size", type=int, default=16, help="batch size")
 parser.add_argument("--api-key", type=str, default="fI0NwCgOFaNOoDDHvDbs", help="Roboflow API key")
 parser.add_argument("--username", type=str, default="uospec-pya0l", help="Roboflow username")
 parser.add_argument("--project-id", type=str, default="thermal_face_forehead", help="Roboflow project ID")
-parser.add_argument("--num-version", type=int, default=4, help="Roboflow project number version")
+parser.add_argument("--version", type=int, default=4, help="Roboflow project number version")
 parser.add_argument("--annotation-format", type=str, default="yolov5", help="Roboflow export annotation format")
 args = parser.parse_args()
 
@@ -47,11 +47,11 @@ if not os.path.isdir(dir_source):
     project = rf.workspace(args.username).project(args.project_id)
 
     # Access the desired model version
-    model = project.version(args.num_version).model
+    model = project.version(args.version).model
 
     # Download the dataset locally
     os.environ["DATASET_DIRECTORY"] = join(os.path.expanduser("~"), "Downloads/content", args.annotation_format)  # Path where dataset is saved
-    dataset = project.version(args.num_version).download(args.annotation_format) #NOTE augmentation may be applied, check the dataset online to see what augmentation techniques are applied
+    dataset = project.version(args.version).download(args.annotation_format) #NOTE augmentation may be applied, check the dataset online to see what augmentation techniques are applied
     dir_source = dataset.location
     
 # Training

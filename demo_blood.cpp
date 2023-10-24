@@ -81,7 +81,7 @@ std::cout << "\nWarmuptime:  " << duration.count() << " Fps: " << 1000.0f / dura
 	  // Set camera parameters
 	  int cam_id = 337;
 	  double iou_thresh = 0.5;
-    double detectable_blood_thresh = 100;
+    double detectable_blood_thresh = 50;
 	
 	  // Read images
 	  cv::Mat img_th = cv::imread(directory_th + "/" + filenames[i], cv::IMREAD_ANYDEPTH);

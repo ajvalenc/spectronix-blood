@@ -12,7 +12,7 @@ from yolort.models import YOLO
 # Parse command-line arguments
 parser = argparse.ArgumentParser()
 # Define arguments for model weights and thresholds
-parser.add_argument("--weights_blood_cls", type=str, default="../weights/pytorch/blood_cls_resnet101.pt")
+parser.add_argument("--weights_blood_cls", type=str, default="../weights/pytorch/resnet101_blood_cls.pth")
 parser.add_argument("--weights_blood_det_th", type=str, default="../weights/pytorch/yolov5_blood_det_th.pt")
 parser.add_argument("--weights_blood_det_ir", type=str, default="../weights/pytorch/yolov5_blood_det_ir.pt")
 parser.add_argument("--weights_face_det", type=str, default="../weights/pytorch/yolov5_face_det.pt")
