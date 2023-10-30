@@ -4,24 +4,25 @@ from os.path import join, dirname, realpath
 
 import cv2
 import torch
-from yolov5 import train
+from yolov5 import val
+from yolort.models.yolo import YOLO
+
 from roboflow import Roboflow
 
-# Train YOLOv5s on custom dataset
+# Validate YOLOv5s on custom dataset
 def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=str, default="", help="file/dir/URL/glob")
     parser.add_argument("--weights", type=str, default="", help="model.pt path(s) leave blank to use original pretrained weights")
-    parser.add_argument("--project", type=str, default="../results/train", help="save results to project/name")
+    parser.add_argument("--project", type=str, default="../results/val", help="save results to project/name")
     parser.add_argument("--conf-thres", type=float, default=0.5, help="confidence threshold")
     parser.add_argument("--iou-thres", type=float, default=0.4, help="Non-Maximum Suppression IOU threshold")
-    parser.add_argument("--epochs", type=int, default=500, help="number of epochs")
-    parser.add_argument("--batch-size", type=int, default=16, help="batch size")
+    parser.add_argument("--yolort", action="store_true", help="use yolort model otherwise use standard yolov5 model")
     parser.add_argument("--api-key", type=str, default="fI0NwCgOFaNOoDDHvDbs", help="Roboflow API key")
     parser.add_argument("--username", type=str, default="uospec-pya0l", help="Roboflow username")
-    parser.add_argument("--project-id", type=str, default="thermal_all_classes-jqkur", help="Roboflow project ID")
-    parser.add_argument("--version", type=int, default=3, help="Roboflow project number version")
+    parser.add_argument("--project-id", type=str, default="thermal_face_forehead", help="Roboflow project ID")
+    parser.add_argument("--version", type=int, default=4, help="Roboflow project number version")
     parser.add_argument("--annotation-format", type=str, default="yolov5", help="Roboflow export annotation format")
     args = parser.parse_args()
 
@@ -54,31 +55,48 @@ def main():
 
         # Download the dataset locally
         os.environ["DATASET_DIRECTORY"] = join(os.path.expanduser("~"), "Downloads/content", args.annotation_format)  # Path where dataset is saved
-        dataset = project.version(args.version).download(args.annotation_format) #NOTE augmentation may be applied, check the dataset online to see what augmentation techniques are applied
-        dir_source = dataset.location
+        dataset = project.version(args.version).download(args.annotation_format)
+        dir_source = join(dataset.location, "test/images")
 
     dir_project = join(ROOT, args.project) # Path where results are saved
     os.makedirs(dir_project, exist_ok=True)
-        
-    # Training
-    train.run(weights=fn_weights,  # model.pt path(s)
-            data=join(dir_source, "data.yaml"),  # data.yaml path
-            epochs=args.epochs,  # number of epochs
-            batch_size=args.batch_size,  # batch size
-            imgsz=640,  # train image size
-            rect=False,  # rectangular training
-            resume=False,  # resume training from checkpoint
-            nosave=False,  # do not save checkpoints
-            noval=False,  # do not save checkpoints
-            noautoanchor=False,  # disable autoanchor check
-            evolve=False,  # evolve hyperparameters
-            bucket="",  # parent bucket of dataset
-            cache_images=True,  # cache images for faster training
-            project=dir_project,  # save to project/name
-            device=0,  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-    )
+
+    # Inference
+    if not args.yolort:
+        # Using YOLOv5 for inference
+        val.run(weights=fn_weights,  # Model.pt path(s)
+                data=join(dir_source, "data.yaml"),  # File/dir/URL/glob, 0 for webcam
+                imgsz=640,  # Inference size (pixels)
+                conf_thres=args.conf_thres,  # Confidence threshold
+                iou_thres=args.iou_thres,  # Non-maximum suppression IOU threshold
+                max_det=1000,  # Maximum detections per image
+                device=device,  # CUDA device, i.e. 0 or 0,1,2,3 or cpu
+                save_txt=True,  # Save results to *.txt
+                save_hybrid=False,  # Save label+prediction hybrid to *.txt
+                save_conf=False,  # Save confidences in --save-txt labels
+                save_json=False,  # Save JSON bounding boxes to *.json
+                augment=False,  # Augmented inference
+                project=dir_project,  # Save results to project/name
+                )
+    else:
+        # Using YOLORT for inference
+        model = YOLO.load_from_yolov5(args.weights, args.conf_thres, args.iou_thres)
+        model = model.eval()
+        model = model.to(device)
+
+        # Loop through the images, make predictions, and print the results
+        filenames = sorted(os.listdir(dir_source))
+        for filename in filenames:
+            
+            img = cv2.imread(join(dir_source, filename))
+
+            img = torch.as_tensor(img.astype("float32").transpose(2,0,1)).to(device)  # Prepare image for model input
+            img /= 255.
+            img = img.unsqueeze(0)
+
+            with torch.no_grad():
+                out = model(img)
+                print(out)
 
 if __name__ == "__main__":
     main()
-
-

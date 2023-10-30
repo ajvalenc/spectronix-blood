@@ -131,5 +131,5 @@ dmypy.json
 # Custom directories
 **/build
 **/weights
-**/output
+**/results
 **/.cache
