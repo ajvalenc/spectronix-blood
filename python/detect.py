@@ -13,7 +13,7 @@ from roboflow import Roboflow
 parser = argparse.ArgumentParser()
 parser.add_argument("--source", type=str, default="", help="file/dir/URL/glob")
 parser.add_argument("--weights", type=str, default="", help="model.pt path(s) leave blank to use original pretrained weights")
-parser.add_argument("--project", type=str, default="../output/runs", help="save results to project/name")
+parser.add_argument("--project", type=str, default="../output/detect", help="save results to project/name")
 parser.add_argument("--conf-thres", type=float, default=0.5, help="confidence threshold")
 parser.add_argument("--iou-thres", type=float, default=0.4, help="Non-Maximum Suppression IOU threshold")
 parser.add_argument("--yolort", action="store_true", help="use yolort model otherwise use standard yolov5 model")

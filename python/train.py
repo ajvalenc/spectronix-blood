@@ -11,6 +11,7 @@ from roboflow import Roboflow
 parser = argparse.ArgumentParser()
 parser.add_argument("--source", type=str, default="", help="file/dir/URL/glob")
 parser.add_argument("--weights", type=str, default="", help="model.pt path(s) leave blank to use original pretrained weights")
+parser.add_argument("--project", type=str, default="../output/train", help="save results to project/name")
 parser.add_argument("--conf-thres", type=float, default=0.5, help="confidence threshold")
 parser.add_argument("--iou-thres", type=float, default=0.4, help="Non-Maximum Suppression IOU threshold")
 parser.add_argument("--epochs", type=int, default=500, help="number of epochs")
@@ -53,6 +54,9 @@ if not os.path.isdir(dir_source):
     os.environ["DATASET_DIRECTORY"] = join(os.path.expanduser("~"), "Downloads/content", args.annotation_format)  # Path where dataset is saved
     dataset = project.version(args.version).download(args.annotation_format) #NOTE augmentation may be applied, check the dataset online to see what augmentation techniques are applied
     dir_source = dataset.location
+
+dir_project = join(ROOT, args.project) # Path where results are saved
+os.makedirs(dir_project, exist_ok=True)
     
 # Training
 train.run(weights=fn_weights,  # model.pt path(s)
@@ -67,7 +71,9 @@ train.run(weights=fn_weights,  # model.pt path(s)
           noautoanchor=False,  # disable autoanchor check
           evolve=False,  # evolve hyperparameters
           bucket="",  # parent bucket of dataset
-          cache_images=True)  # cache images for faster training
+          cache_images=True,  # cache images for faster traininga
+          project=dir_project,  # save to project/name
+)
 
 
 
